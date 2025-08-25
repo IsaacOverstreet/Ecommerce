@@ -1,0 +1,313 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  CUSTOMER
+  ADMIN
+  EDITOR
+}
+
+enum OrderStatus {
+  PENDING
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELLED
+  REFUNDED
+}
+
+enum Currency {
+  USD
+  EUR
+  GBP
+  NGN
+  CAD
+  INR
+}
+
+enum PaymentStatus {
+  PENDING
+  COMPLETED
+  FAILED
+  REFUNDED
+}
+
+enum PaymentMethod {
+  CREDIT_CARD
+  BANK_TRANSFER
+}
+
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String
+  name          String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  emailVerified Boolean        @default(false)
+  active        Boolean        @default(true)
+  role          Role           @default(CUSTOMER)
+  deletedAt     DateTime?
+  order         Order[]
+  address       Address[]
+  reviews       Review[]
+  cart          Cart?
+  userDiscounts UserDiscount[]
+  pageview      PageView[]
+}
+
+model Address {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  street     String
+  city       String
+  state      String
+  postalCode String
+  country    String
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  orders Order[]
+}
+
+model Product {
+  id                     String            @id @default(uuid())
+  priceInCents           Decimal           @default(0.00)
+  name                   String
+  slug                   String            @unique
+  description            String?
+  quantity               Int               @default(0)
+  trackQuantity          Boolean           @default(true)
+  isAvailableForPurchase Boolean           @default(true)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  deletedAt              DateTime?         @map("deleted_at")
+  active                 Boolean           @default(true)
+  images                 ProductImage[]
+  categories             ProductCategory[]
+  variants               ProductVariant[]
+  reviews                Review[]
+  cartItems              CartItem[]
+  orderItems             OrderItem[]
+  inventoryLogs          InventoryLog[]
+  pageview               PageView[]
+
+  @@index([isAvailableForPurchase])
+  @@index([createdAt])
+  @@index([isAvailableForPurchase, createdAt])
+}
+
+model ProductImage {
+  id        String  @id @default(uuid())
+  product   Product @relation(fields: [productId], references: [id])
+  productId String
+  url       String // Cloud URL or path
+  altText   String?
+  order     Int     @default(0) // For sorting
+}
+
+model Category {
+  id        String   @id @default(uuid())
+  name      String
+  slug      String   @unique
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  products ProductCategory[]
+}
+
+model ProductCategory {
+  id         String   @id @default(uuid())
+  product    Product  @relation(fields: [productId], references: [id])
+  productId  String
+  category   Category @relation(fields: [categoryId], references: [id])
+  categoryId String
+  createdAt  DateTime @default(now())
+
+  @@unique([productId, categoryId]) // Ensure no duplicates
+}
+
+model ProductVariant {
+  id           String         @id @default(uuid())
+  product      Product        @relation(fields: [productId], references: [id])
+  productId    String
+  name         String // e.g., "Color: Red", "Size: Large"
+  price        Decimal?
+  sku          String?        @unique
+  barcode      String?
+  quantity     Int            @default(0)
+  createdAt    DateTime       @default(now())
+  updatedAt    DateTime       @updatedAt
+  cartItems    CartItem[]
+  orderItems   OrderItem[]
+  inventoryLog InventoryLog[]
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  product   Product  @relation(fields: [productId], references: [id])
+  productId String
+  user      User     @relation(fields: [userId], references: [id])
+  userId    String
+  rating    Int
+  content   String?
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Cart {
+  id        String     @id @default(uuid())
+  user      User       @relation(fields: [userId], references: [id])
+  userId    String     @unique
+  items     CartItem[]
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  expiresAt DateTime? // Optional expiration timestamp for abandoned cart handling
+}
+
+model CartItem {
+  id        String          @id @default(uuid())
+  cart      Cart            @relation(fields: [cartId], references: [id])
+  cartId    String
+  product   Product         @relation(fields: [productId], references: [id])
+  productId String
+  quantity  Int             @default(1)
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+  variantId String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+
+  @@unique([cartId, productId, variantId])
+}
+
+model Order {
+  id                String      @id @default(uuid())
+  orderNumber       String      @unique
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId            String
+  address           Address?    @relation(fields: [addressId], references: [id])
+  addressId         String?
+  status            OrderStatus @default(PENDING)
+  discountId        String? // foreign key can be nullable
+  discount          Discount?   @relation(fields: [discountId], references: [id])
+  total             Decimal
+  subtotal          Decimal
+  tax               Decimal?
+  shipping          Decimal?
+  discountAmount    Decimal?
+  shippingMethod    String?
+  trackingNumber    String?
+  estimatedDelivery DateTime?
+  deliveredAt       DateTime?
+  currency          Currency    @default(NGN)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  items             OrderItem[]
+  payments          Payment[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id        String          @id @default(uuid())
+  order     Order           @relation(fields: [orderId], references: [id])
+  orderId   String
+  product   Product         @relation(fields: [productId], references: [id])
+  productId String
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+  variantId String?
+  price     Decimal
+  quantity  Int
+  total     Decimal
+  createdAt DateTime        @default(now())
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  order         Order         @relation(fields: [orderId], references: [id])
+  orderId       String
+  amount        Decimal
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  transactionId String?
+  currency      Currency      @default(NGN)
+  details       Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+}
+
+model Discount {
+  id        String    @id @default(uuid())
+  code      String    @unique
+  type      String // "percentage" or "fixed"
+  value     Decimal
+  minAmount Decimal?
+  startDate DateTime
+  endDate   DateTime?
+  active    Boolean   @default(true)
+  singleUse Boolean   @default(false)
+  usedCount Int       @default(0)
+  maxUses   Int?
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  orders        Order[]
+  userDiscounts UserDiscount[]
+}
+
+model UserDiscount {
+  id         String   @id @default(uuid())
+  user       User     @relation(fields: [userId], references: [id])
+  userId     String
+  discount   Discount @relation(fields: [discountId], references: [id])
+  discountId String
+  usedAt     DateTime @default(now())
+
+  @@unique([userId, discountId]) // Prevents user from reusing same code
+}
+
+// For inventory management
+model InventoryLog {
+  id          String          @id @default(uuid())
+  product     Product         @relation(fields: [productId], references: [id])
+  productId   String
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+  variantId   String?
+  change      Int // Positive for addition, negative for deduction
+  previousQty Int
+  newQty      Int
+  reason      String? // "purchase", "return", "adjustment", etc.
+  referenceId String? // orderId or other reference
+  performedBy String?
+  createdAt   DateTime        @default(now())
+}
+
+// For analytics and reporting
+model PageView {
+  id        String   @id @default(uuid())
+  path      String
+  product   Product? @relation(fields: [productId], references: [id])
+  productId String?
+  user      User?    @relation(fields: [userId], references: [id])
+  userId    String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+}
