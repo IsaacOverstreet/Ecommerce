@@ -1,15 +1,21 @@
 "use client";
 
 import Link from "next/link";
+import { SidebarTrigger } from "../ui/sidebar";
 
 export const AdminNavbar = () => {
   return (
-    <nav className="w-full border-b bg-white shadow-md fixed top-0 z-50">
-      <div className="max-w-7xl mx-auto flex items-center justify-between px-4 py-3">
+    <nav className="w-[100%] flex border-b bg-white shadow-md fixed top-0 z-50">
+      <div className="mt-1 p-2">
+        <SidebarTrigger />
+      </div>
+
+      <div className=" w-[80%] flex items-center justify-between px-4 py-3">
         {/* Logo / Brand */}
+
         <Link
           href="/admin/dashboard"
-          className="text-lg font-semibold text-gray-800 hover:text-blue-600 transition-colors"
+          className="text-xl  font-semibold text-gray-800 hover:text-blue-600 transition-colors"
         >
           The Creation Temple
         </Link>
@@ -20,11 +26,6 @@ export const AdminNavbar = () => {
             Dashboard
           </Link>
           {/* Add more links here as needed */}
-        </div>
-
-        {/* Right-side Controls (Optional) */}
-        <div className="space-x-2 sm:space-x-6">
-          {/* Example: <Button>Profile</Button> or user menu */}
         </div>
       </div>
     </nav>

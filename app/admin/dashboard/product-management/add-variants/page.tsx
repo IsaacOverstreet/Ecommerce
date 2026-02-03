@@ -4,10 +4,10 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { getErrorMessage } from "@/lib/utils/error";
-import { logger } from "@/lib/utils/logger";
+import { getErrorMessage } from "@/utils/error";
+import { logger } from "@/utils/logger";
 import axios from "axios";
-import { variantSchema } from "@/components/shared-component/variant-schema";
+import { variantSchema } from "@/lib/validators/add-variant-schema";
 import { Suspense, useState } from "react";
 import { toast } from "react-toastify";
 import { z, ZodError } from "zod";
@@ -71,18 +71,14 @@ export default function VariantType() {
         }));
 
         const colorValidData = z.array(variantSchema).safeParse(colorPayLoad);
-       
 
         if (!colorValidData.success) {
-         
-
           setError(parseZodError(colorValidData.error));
           setIsSubmitting(false);
           return;
         }
 
         const response = await axios.post("/api/variant", colorValidData.data);
-        
 
         if (!response.data) {
           throw new Error("failed to create variant");
@@ -102,15 +98,12 @@ export default function VariantType() {
       } else {
         const validData = variantSchema.safeParse(form);
         if (!validData.success) {
-         
-
           setError(parseZodError(validData.error));
           setIsSubmitting(false);
           return;
         }
 
         const response = await axios.post("/api/variant", validData.data);
-        
 
         if (!response.data) {
           throw new Error("failed to create variant");
@@ -193,14 +186,17 @@ export default function VariantType() {
   return (
     <div>
       <div className="max-w-2xl mx-auto bg-white p-6 rounded-xl shadow-md space-y-6 mt-9">
-        <h1 className="text-2xl font-semibold text-gray-800">
+        <h1 className="text-xl font-semibold text-gray-800">
           Create New Variant Type
         </h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* NAME */}
           <div className="space-y-2">
-            <Label htmlFor="name" className="text-sm font-medium text-gray-700">
+            <Label
+              htmlFor="name"
+              className="text-sm md:text-base font-medium text-gray-700"
+            >
               Name
             </Label>
             <Input
@@ -291,8 +287,11 @@ export default function VariantType() {
                   className="w-full"
                 />
                 {errors.hexCode && (
-                  <span className="text-sm text-red-600">{errors.hexCode}</span>
+                  <span className="border leading-tight border-amber-400 text-sm text-red-600">
+                    {errors.hexCode}
+                  </span>
                 )}
+                <br />
 
                 {/* Add Button */}
                 <button

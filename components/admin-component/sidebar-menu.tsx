@@ -26,10 +26,17 @@ const items = [
     title: "Product management",
     subContent: [
       {
+        title: "View & edit all products",
+        url: "/admin/dashboard/product-management/view-products",
+      },
+      {
         title: "Add category",
         url: "/admin/dashboard/product-management/add-category",
       },
-      { title: "Add product", url: "#" },
+      {
+        title: "Add product",
+        url: "/admin/dashboard/product-management/add-product",
+      },
       {
         title: "Add variant",
         url: "/admin/dashboard/product-management/add-variants",
@@ -104,7 +111,7 @@ export default function AdminPanelSections() {
                   <SidebarMenu>
                     <SidebarMenuItem>
                       <CollapsibleTrigger asChild>
-                        <SidebarMenuButton className="w-full flex items-center justify-between px-3 py-2 text-left text-gray-800 hover:bg-gray-100 transition-colors">
+                        <SidebarMenuButton className="w-full flex items-center justify-between px-3 py-2 text-left text-gray-800 hover:bg-gray-100 transition-colors ">
                           {item.title}
                           <ChevronRight
                             className={`ml-2 h-4 w-4 transition-transform ${

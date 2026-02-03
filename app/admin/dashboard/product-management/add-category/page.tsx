@@ -4,12 +4,12 @@ import { Button } from "@/components/ui/button";
 import { columns } from "./component/column";
 import { DataTable } from "./component/data-table";
 import { useEffect, useState } from "react";
-import { slugify } from "@/lib/utils/slug";
+import { slugify } from "@/utils/slug";
 import axios from "axios";
 import { useRouter } from "next/navigation";
 import { toast } from "react-toastify";
-import { logger } from "@/lib/utils/logger";
-import { getErrorMessage } from "@/lib/utils/error";
+import { logger } from "@/utils/logger";
+import { getErrorMessage } from "@/utils/error";
 import { useCategories } from "./hooks/useCategory";
 
 export default function NewCategory() {
@@ -30,7 +30,7 @@ export default function NewCategory() {
     try {
       const slug = slugify(name);
 
-      const response = await axios.post("/api/category", { name, slug });
+      const response = await axios.post("/api/admin/category", { name, slug });
 
       if (!response.data) {
         throw new Error("failed to create category");
@@ -47,8 +47,8 @@ export default function NewCategory() {
     }
   }
   return (
-    <div className="w-full h-vh border border-amber-950">
-      <h1 className=" text-center">Add new category</h1>
+    <div className="mt-10 w-full h-dvh">
+      <h1 className=" text-center font-bold">Add new category</h1>
       <div className="flex   space-y-5">
         <Input
           className="w-[70%]"

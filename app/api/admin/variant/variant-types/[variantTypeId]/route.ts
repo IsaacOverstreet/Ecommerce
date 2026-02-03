@@ -1,6 +1,6 @@
-import { prisma } from "@/lib/db/client";
-import { logger } from "@/lib/utils/logger";
-import { TitleEditSchema } from "@/lib/utils/sharedUtils/validators";
+import { prisma } from "@/lib/prisma/client";
+import { logger } from "@/utils/logger";
+import { TitleEditSchema } from "@/lib/sharedUtils/validators";
 import { NextResponse } from "next/server";
 
 export async function PATCH(

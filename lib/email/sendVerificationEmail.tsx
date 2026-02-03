@@ -1,6 +1,6 @@
 import { render } from "@react-email/render";
 import VerifyEmail from "./template/VerifyEmails";
-import { logger } from "@/lib/utils/logger";
+import { logger } from "@/utils/logger";
 import { sendEmail } from "./resendEmail";
 
 export async function sendVerificationRequest({

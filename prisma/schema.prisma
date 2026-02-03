@@ -11,7 +11,6 @@ generator client {
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
 }
 
 
@@ -91,7 +90,8 @@ model Address {
 
 model Product {
   id String @id @default(uuid())
-  priceInCents Decimal @default(0.00)
+  price Decimal @default(0.00)
+  compareAtPrice Decimal?
   name          String
   slug          String     @unique
   description String?
@@ -102,11 +102,21 @@ model Product {
   updatedAt DateTime @updatedAt
   deletedAt DateTime? @map("deleted_at")
   active Boolean @default(true)
+  sku         String   @unique
+  weight      Float?   // in kg
+  length      Float?   // in cm
+  width       Float?   // in cm
+  height      Float?   // in cm
+  tag String[]
+  urlHandle String?
+  metaTitle String?
+  metaDescription String?
+  discounts   ProductDiscount[]
   variantType VariantType[]
   images        ProductImage[]
   categories    ProductCategory[]
   variants      ProductVariant[]
-  variantsGroup    ProductVariantGroup[]
+  // variantsGroup    ProductVariantGroup[]
   reviews       Review[]
   cartItems     CartItem[]
   orderItems    OrderItem[]
@@ -116,9 +126,8 @@ model Product {
    @@index([createdAt])
    @@index([isAvailableForPurchase, createdAt])
 
-   
-
 }
+
 
 model ProductImage {
   id        String   @id @default(uuid())
@@ -127,18 +136,9 @@ model ProductImage {
   url       String   // Cloud URL or path
   altText   String?
   order     Int      @default(0) // For sorting
-}
+  isPrimary Boolean  @default(false)
 
-model Category {
-  id          String     @id @default(uuid())
-  name        String
-  slug        String     @unique
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-
-  products    ProductCategory[]
-  variantType VariantType[] @relation("CategoryVariantTypes")
-
+  @@index([productId, isPrimary])
 }
 
 model ProductCategory {
@@ -151,6 +151,82 @@ model ProductCategory {
 
   @@unique([productId, categoryId]) // Ensure no duplicates
 }
+
+model ProductVariant {
+  id        String    @id @default(uuid())
+  product   Product   @relation(fields: [productId], references: [id])
+  productId String
+
+  sku       String    @unique
+  price     Decimal?
+  quantity  Int       @default(0)
+  isAvailableForPurchase Boolean @default(true)
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+
+  // Relationships
+  values    ProductVariantValue[]
+  cartItems CartItem[]
+  orderItems OrderItem[]
+  inventoryLogs InventoryLog[]
+}
+
+
+model ProductVariantValue {
+  id               String        @id @default(uuid())
+  productVariant   ProductVariant @relation(fields: [variantId], references: [id])
+  variantId        String
+
+  variantValue     VariantValue  @relation(fields: [variantValueId], references: [id])
+  variantValueId   String
+}
+
+
+// model ProductVariantGroup {
+//   id         String           @id @default(uuid())
+//   product    Product          @relation(fields: [productId], references: [id])
+//   productId  String
+//   variants   ProductVariant[] // Red + Large + Cotton
+//   sku        String?          @unique
+//   quantity   Int              @default(0)
+//   price      Decimal?
+//   isAvailableForPurchase Boolean @default(true)
+//   createdAt  DateTime         @default(now())
+//   updatedAt  DateTime         @updatedAt
+// }
+
+
+// model ProductVariant {
+//   id          String   @id @default(uuid())
+//   product     Product  @relation(fields: [productId], references: [id])
+//   productId   String
+//   variantValue         VariantValue       @relation(fields: [variantValueId], references: [id])
+//   variantValueId       String
+//   productVariantGroup  ProductVariantGroup @relation(fields: [groupId], references: [id])
+//   groupId              String  
+//   price Decimal? 
+//   sku String? @unique
+//   barcode String?
+//   quantity    Int      @default(0)
+//   createdAt   DateTime @default(now())
+//   updatedAt   DateTime @updatedAt
+//   cartItems   CartItem[]
+//   orderItems    OrderItem[]
+//   inventoryLog InventoryLog[]
+  
+// }
+
+model Category {
+  id          String     @id @default(uuid())
+  name        String
+  slug        String     @unique
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  products    ProductCategory[]
+  variantType VariantType[] @relation("CategoryVariantTypes")
+
+}
+
 
 model VariantType {
   id          String     @id @default(uuid())
@@ -172,44 +248,10 @@ model VariantValue {
   hexCode       String?                           // Optional if not color variants
   variantType   VariantType       @relation(fields: [variantTypeId], references: [id])
   variantTypeId String
-  productVariants ProductVariant[]
-}
-
-model ProductVariantGroup {
-  id         String           @id @default(uuid())
-  product    Product          @relation(fields: [productId], references: [id])
-  productId  String
-  variants   ProductVariant[] // Red + Large + Cotton
-
-  sku        String?          @unique
-  quantity   Int              @default(0)
-  price      Decimal?
-  isAvailableForPurchase Boolean @default(true)
-
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+  productVariantValue ProductVariantValue[]
 }
 
 
-model ProductVariant {
-  id          String   @id @default(uuid())
-  product     Product  @relation(fields: [productId], references: [id])
-  productId   String
-  variantValue         VariantValue       @relation(fields: [variantValueId], references: [id])
-  variantValueId       String
-  productVariantGroup  ProductVariantGroup @relation(fields: [groupId], references: [id])
-  groupId              String  
-  price Decimal? 
-  sku String? @unique
-  barcode String?
-  quantity    Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  cartItems   CartItem[]
-  orderItems    OrderItem[]
-  inventoryLog InventoryLog[]
-  
-}
 
 model Review {
   id        String   @id @default(uuid())
@@ -323,9 +365,22 @@ model Discount {
   maxUses     Int?
   createdAt   DateTime   @default(now())
   updatedAt   DateTime   @updatedAt
-  
+  products  ProductDiscount[]
   orders      Order[]
   userDiscounts  UserDiscount[]
+}
+
+model ProductDiscount {
+  id         String    @id @default(uuid())
+  product    Product   @relation(fields: [productId], references: [id])
+  productId  String
+  discount   Discount  @relation(fields: [discountId], references: [id])
+  discountId String
+  startDate  DateTime
+  endDate    DateTime?
+  active     Boolean   @default(true)
+
+  @@unique([productId, discountId])
 }
 
 model UserDiscount {

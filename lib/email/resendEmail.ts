@@ -1,5 +1,5 @@
 import { Resend } from "resend";
-import { logger } from "@/lib/utils/logger";
+import { logger } from "@/utils/logger";
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 interface SendEmailParams {

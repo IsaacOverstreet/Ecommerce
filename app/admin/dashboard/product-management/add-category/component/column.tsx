@@ -1,6 +1,6 @@
 "use client";
 
-import { formatDate } from "@/lib/utils/formatDate";
+import { formatDate } from "@/utils/formatDate";
 import { ColumnDef } from "@tanstack/react-table";
 
 export type Category = {

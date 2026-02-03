@@ -1,7 +1,7 @@
-import { prisma } from "@/lib/db/client";
+import { prisma } from "@/lib/prisma/client";
 import { NextResponse } from "next/server";
-import { EditingValueSchema } from "@/lib/utils/sharedUtils/validators";
-import { logger } from "@/lib/utils/logger";
+import { EditingValueSchema } from "@/lib/sharedUtils/validators";
+import { logger } from "@/utils/logger";
 
 export async function PATCH(
   request: Request,

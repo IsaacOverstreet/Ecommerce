@@ -1,23 +1,8 @@
-import { logger } from "@/lib/utils/logger";
+import { logger } from "@/utils/logger";
 import axios from "axios";
 import { useCallback, useState } from "react";
 import { toast } from "react-toastify";
-
-export type Variants = {
-  id: string;
-  name: string;
-  isColor: boolean;
-  description?: string;
-  createdAt: string;
-  updatedAt: string;
-  values: VariantValue[];
-};
-
-type VariantValue = {
-  id: string;
-  name: string;
-  hexCode?: string;
-};
+import { Variants } from "@/app/types/variantTypes";
 
 export function useVariants() {
   const [variantState, setVariantState] = useState<Variants[]>([]);
@@ -26,7 +11,7 @@ export function useVariants() {
   const fetchVariants = useCallback(async () => {
     setLoading(true);
     try {
-      const response = await axios.get("/api/variant");
+      const response = await axios.get("/api/admin/variant");
       if (!response.data) {
         throw new Error("failed to fetch variants");
       }

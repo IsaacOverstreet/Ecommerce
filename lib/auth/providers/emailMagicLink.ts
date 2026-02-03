@@ -1,6 +1,6 @@
 import EmailProvider from "next-auth/providers/email";
 import { Resend } from "resend";
-import { ratelimit } from "@/lib/utils/ratelimit";
+import { ratelimit } from "@/utils/ratelimit";
 
 const resend = new Resend(process.env.RESEND_API_KEY!);
 

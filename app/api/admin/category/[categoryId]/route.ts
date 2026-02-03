@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/db/client";
-import { logger } from "@/lib/utils/logger";
+import { prisma } from "@/lib/prisma/client";
+import { logger } from "@/utils/logger";
 import { NextResponse } from "next/server";
 
 export async function PUT(
@@ -8,7 +8,6 @@ export async function PUT(
 ) {
   try {
     const { categoryId } = params;
-   
 
     if (!categoryId) {
       return NextResponse.json(

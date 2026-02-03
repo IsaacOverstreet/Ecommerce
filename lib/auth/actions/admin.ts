@@ -1,6 +1,6 @@
 import { PrismaClient } from "@prisma/client";
 
-import { verifyPassword } from "@/lib/utils/password";
+import { verifyPassword } from "@/utils/password";
 const prisma = new PrismaClient();
 
 // Find user

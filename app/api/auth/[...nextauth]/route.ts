@@ -1,6 +1,6 @@
 import NextAuth from "next-auth";
 import { authOptions } from "@/lib/auth/options";
-import { logger } from "@/lib/utils/logger";
+import { logger } from "@/utils/logger";
 import { NextResponse } from "next/server";
 
 const handler = NextAuth(authOptions);

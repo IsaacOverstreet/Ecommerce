@@ -1,14 +1,15 @@
 import dynamic from "next/dynamic";
-import { type Variants } from "../hooks/useVariants";
+// import { type Variants } from "../hooks/useVariants";
+import { Variants } from "@/app/types/variantTypes";
 import { SetStateAction, Dispatch, Suspense, useState } from "react";
 import { PulseLoader } from "react-spinners";
 import { Pencil, Trash2 } from "lucide-react";
 import axios from "axios";
 import { toast } from "react-toastify";
-import { logger } from "@/lib/utils/logger";
-import { getErrorMessage } from "@/lib/utils/error";
+import { logger } from "@/utils/logger";
+import { getErrorMessage } from "@/utils/error";
 import { useConfirmation } from "@/hooks/useConfirmation";
-import { formatDate } from "@/lib/utils/formatDate";
+import { formatDate } from "@/utils/formatDate";
 const EditVariant = dynamic(() => import("./EditVariant"));
 
 export interface VariantPreviewProp {
@@ -34,7 +35,7 @@ export default function VariantPreview({
             throw new Error("Item not found.");
           }
           const response = await axios.delete(
-            `/api/variant/variant-types/${variantTypeId}`
+            `/api/admin/variant/variant-types/${variantTypeId}`
           );
           const result = response.data;
 
@@ -54,7 +55,7 @@ export default function VariantPreview({
       <div className="space-y-6 rounded-xl border border-gray-200 bg-white p-6 shadow-md ">
         {/* Header Section */}
         <div className="flex items-center justify-between border-b border-gray-100 pb-4 mb-4">
-          <h2 className="text-lg font-semibold text-gray-800">
+          <h2 className="text-base md:text-lg lg:text-xl font-semibold text-gray-800">
             Variant Details
           </h2>
           <button
@@ -70,7 +71,7 @@ export default function VariantPreview({
         {/* Details Section */}
         <div className="space-y-2">
           <div className="bg-gray-50 rounded-md px-3 py-2 hover:bg-gray-100 transition">
-            <span className="block text-gray-500 text-sm font-medium">
+            <span className="block text-gray-500 text-sm md:text-lg lg:text-xl font-medium">
               Name
             </span>
             <span className="block text-gray-900 text-base font-semibold">
@@ -102,7 +103,7 @@ export default function VariantPreview({
 
         {/* Table Section */}
         <div className="overflow-x-auto rounded-lg border border-gray-200 ">
-          <table className="min-w-full text-sm text-left">
+          <table className="min-w-full md:text-sm text-xs text-left">
             <thead className="bg-gray-50 text-xs uppercase text-gray-600">
               <tr>
                 <th className="px-4 py-3 border-b">Variant Value</th>
@@ -120,7 +121,7 @@ export default function VariantPreview({
                     {variant.isColor && (
                       <div
                         style={{ backgroundColor: value.hexCode }}
-                        className="w-8 h-8 rounded border border-gray-300"
+                        className="w-5 h-5 md:h-8  md:w-8 rounded border border-gray-300"
                       ></div>
                     )}
                   </td>

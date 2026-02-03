@@ -11,7 +11,7 @@ export default function AdminLayout({
   return (
     <SidebarProvider>
       <AppSidebar />
-      <main className=" border border-amber-400 w-full">
+      <main className=" border border-amber-400 w-[100%]">
         <AdminNavbar />
         <SidebarTrigger />
         <ToastContainer

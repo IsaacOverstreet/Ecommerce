@@ -1,5 +1,5 @@
-import { prisma } from "@/lib/db/client";
-import { logger } from "@/lib/utils/logger";
+import { prisma } from "@/lib/prisma/client";
+import { logger } from "@/utils/logger";
 import { NextResponse } from "next/server";
 
 // Get all categories

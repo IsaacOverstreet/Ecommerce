@@ -6,14 +6,15 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { X, Edit3, Trash2, Save, Palette, Plus, Shredder } from "lucide-react";
-import type { Variants } from "../hooks/useVariants";
+
+import { Variants } from "@/app/types/variantTypes";
 import { Dispatch, SetStateAction, useEffect, useState } from "react";
 
 import { ZodError } from "zod";
 import axios from "axios";
-import { logger } from "@/lib/utils/logger";
+import { logger } from "@/utils/logger";
 import { toast } from "react-toastify";
-import { getErrorMessage } from "@/lib/utils/error";
+import { getErrorMessage } from "@/utils/error";
 import {
   EditingValue,
   EditingValueSchema,
@@ -21,7 +22,7 @@ import {
   NewInputSchema,
   TitleEdit,
   TitleEditSchema,
-} from "@/lib/utils/sharedUtils/validators";
+} from "@/lib/sharedUtils/validators";
 import { useConfirmation } from "@/hooks/useConfirmation";
 
 interface EditVariantProp {
@@ -85,7 +86,7 @@ export default function EditVariant({
           }
 
           await axios.patch(
-            `/api/variant/variant-types/${variantTypeId}`,
+            `/api/admin/variant/variant-types/${variantTypeId}`,
             validate.data
           );
 
@@ -121,7 +122,7 @@ export default function EditVariant({
             variantTypeId,
           };
 
-          const response = await axios.post("/api/variant/", payload);
+          const response = await axios.post("/api/admin/variant/", payload);
           const result = response.data;
 
           setVariantState((prev) =>
@@ -170,7 +171,7 @@ export default function EditVariant({
             return;
           }
 
-          await axios.patch(`/api/variant/${variantId}`, inputs);
+          await axios.patch(`/api/admin/variant/${variantId}`, inputs);
 
           setVariantState((prev) =>
             prev.map((v) =>
@@ -206,6 +207,7 @@ export default function EditVariant({
 
   /////////HANDLE EDIT ICON/////////////////
   function handleEditValue(value: EditingValue) {
+    setError({});
     setEditingValue({ ...value });
   }
 
@@ -229,7 +231,7 @@ export default function EditVariant({
             throw new Error("Invalid Id");
           }
 
-          await axios.delete(`/api/variant/${id}`, {
+          await axios.delete(`/api/admin/variant/${id}`, {
             data: { name },
           });
 
@@ -264,26 +266,29 @@ export default function EditVariant({
           if (!setOpen) return;
         }}
       >
-        <DialogContent className="border border-red-800 h-[90%]  flex justify-center items-center ">
+        <DialogContent
+          className="p-1.5 md:p-4 overflow-y-auto 
+    max-h-[90vh] flex justify-center items-center "
+          style={{ scrollbarWidth: "thin", scrollbarColor: "#ccc transparent" }}
+        >
           <DialogTitle className="sr-only">Edit Variant</DialogTitle>
           <DialogDescription className="sr-only">
             Make changes to this variant value above.
           </DialogDescription>
-          <div className="p-0 max-w-full w-full md:max-w-4xl  h-[95%]">
-            <div className=" flex flex-col justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-4 md:p-8 h-[100%] rounded-lg ">
+          <div className="  pt-1  max-w-[100%]  md:max-w-4xl max-h-[90dvh]     w-full lg:max-w-5xl xl:max-w-6xl ">
+            <div className=" flex flex-col justify-center bg-gradient-to-br from-gray-50 to-gray-100 p-2  md:p-8 h-[100%] rounded-lg">
               {/* Header */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
+              <div className=" bg-white rounded-lg shadow-sm  p-6 mb-6">
                 <div className="flex items-center gap-3 mb-6">
                   <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
                     <Palette className="w-5 h-5 text-blue-600" />
                   </div>
-                  <h1 className="text-2xl font-bold text-gray-900">
+                  <h1 className="text-xl font-bold text-gray-900">
                     Edit Variant: {variant.name}
                   </h1>
                 </div>
 
                 {/* Variant Details Form */}
-
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <label
@@ -334,20 +339,20 @@ export default function EditVariant({
               </div>
 
               {/* Color Values Section */}
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h2 className="text-lg font-semibold text-gray-900 mb-4">
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-3">
+                <h2 className="text-sm md:text-lg font-semibold text-gray-900 mb-4">
                   Color Values
                 </h2>
 
                 {/* Colors Table */}
                 <div className="border border-gray-200 rounded-lg overflow-hidden">
-                  <div className="bg-gray-50 px-6 py-3 border-b border-gray-200">
-                    <div className="grid grid-cols-12 gap-4 items-center text-sm font-medium text-gray-700">
-                      <div className="col-span-4">Variant value</div>
-                      <div className="col-span-3" hidden={!variant.isColor}>
-                        Hex Code
+                  <div className="bg-gray-50 px-1.5 py-3 border-b border-gray-200">
+                    <div className="grid grid-cols-12 gap-3 items-center text-xs  text-gray-700 font-bold ">
+                      <div className="col-span-3 md:col-span-4">
+                        Variant value
                       </div>
-                      <div className="col-span-2">Preview</div>
+                      <div className="col-span-3  md:col-span-3">Hex Code</div>
+                      <div className="col-span-3 md:col-span-2 ">Preview</div>
                       <div className="col-span-3 text-right">Actions</div>
                     </div>
                   </div>
@@ -358,18 +363,17 @@ export default function EditVariant({
                   {variant.values.map((stateVariant) => (
                     <div
                       key={stateVariant.id}
-                      className="px-6 py-4 hover:bg-gray-50 transition-colors"
+                      className=" px-1 md:px-4 py-4 hover:bg-gray-50 transition-colors"
                     >
                       {editingValue && editingValue.id === stateVariant.id ? (
-                        <div className="grid grid-cols-12 gap-4 items-center">
-                          <div className="col-span-4">
-                            <div className="flex gap-2">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-12 gap-4 items-center w-full">
+                          <div className="col-span-12 sm:col-span-6 md:col-span-4">
+                            <div className="flex flex-col gap-1">
                               {error.name && (
-                                <span className="text-sm text-red-600">
+                                <span className="text-xs sm:text-sm text-red-600">
                                   {error.name}
                                 </span>
                               )}
-
                               <input
                                 type="text"
                                 value={editingValue.name || ""}
@@ -379,13 +383,14 @@ export default function EditVariant({
                                     name: e.target.value,
                                   })
                                 }
-                                className="flex-1 px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
+                                className="w-full px-2 py-2 text-sm sm:text-base border border-gray-300 rounded focus:ring-1 focus:ring-blue-500"
                               />
                             </div>
                           </div>
-                          <div className="col-span-3">
+
+                          <div className="col-span-12 sm:col-span-6 md:col-span-3">
                             {error.hexCode && (
-                              <span className="text-sm text-red-600">
+                              <span className="text-xs sm:text-sm text-red-600">
                                 {error.hexCode}
                               </span>
                             )}
@@ -399,13 +404,13 @@ export default function EditVariant({
                                   hexCode: e.target.value,
                                 })
                               }
-                              className="w-full px-2 py-1 border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 font-mono"
+                              className="w-full px-2 py-2 text-sm sm:text-base border border-gray-300 rounded focus:ring-1 focus:ring-blue-500 font-mono"
                             />
                           </div>
 
-                          <div className="col-span-2">
+                          <div className="col-span-12 sm:col-span-6 md:col-span-2 flex justify-center md:justify-start">
                             <div
-                              className="w-8 h-8 rounded border border-gray-300"
+                              className="w-8 h-8 sm:w-10 sm:h-10 rounded border border-gray-300"
                               style={{
                                 backgroundColor:
                                   editingValue.hexCode ?? undefined,
@@ -413,25 +418,25 @@ export default function EditVariant({
                             ></div>
                           </div>
 
-                          <div className="col-span-3 text-right">
+                          <div className="col-span-12 sm:col-span-6 md:col-span-3 text-right">
                             <div className="flex justify-end gap-2">
                               <button
                                 onClick={() => handleEditSave(variant.id)}
-                                className="p-1.5 text-green-600 hover:bg-green-50 rounded transition-colors"
+                                className="p-2 sm:p-2.5 text-green-600 hover:bg-green-50 rounded transition-colors"
                                 title="Save"
                               >
                                 {isSaving ? (
-                                  <Save className="w-4 h-4" />
+                                  <Save className="w-4 h-4 sm:w-5 sm:h-5" />
                                 ) : (
-                                  <Save className="w-4 h-4" />
+                                  <Save className="w-4 h-4 sm:w-5 sm:h-5" />
                                 )}
                               </button>
                               <button
                                 onClick={handleCancelEdit}
-                                className="p-1.5 text-gray-400 hover:bg-gray-50 rounded transition-colors"
+                                className="p-2 sm:p-2.5 text-gray-400 hover:bg-gray-50 rounded transition-colors"
                                 title="Cancel"
                               >
-                                <X className="w-4 h-4" />
+                                <X className="w-4 h-4 sm:w-5 sm:h-5" />
                               </button>
                             </div>
                           </div>
@@ -439,23 +444,24 @@ export default function EditVariant({
                       ) : (
                         <div
                           key={stateVariant.id}
-                          className="grid grid-cols-12 gap-4 items-center"
+                          className="grid grid-cols-12 gap-5 items-center w-[100%]"
                         >
-                          <div className="col-span-4">
+                          <div className="col-span-[3] md:col-span-4">
                             <div className="flex items-center gap-2">
-                              <span className="font-medium text-gray-900">
+                              <span className="font-bold md:font-medium text-gray-900 md:text-base text-xs">
                                 {stateVariant.name}
                               </span>
                             </div>
                           </div>
-                          <div className="col-span-3">
-                            <span className="font-mono text-sm text-gray-600">
+                          <div className="col-span-3 md:col-span-3">
+                            <span className="font-mono text-xs md:text-sm text-gray-600">
                               {stateVariant.hexCode}
                             </span>
                           </div>
-                          <div className="col-span-2">
+                          <div className="col-span-3 md:col-span-2">
                             <div
-                              className="w-8 h-8 rounded border border-gray-300"
+                              hidden={!variant.isColor}
+                              className="w-5 h-5 md:w-8 md:h-8 rounded border border-gray-300"
                               style={{
                                 backgroundColor: stateVariant.hexCode,
                               }}
@@ -465,14 +471,14 @@ export default function EditVariant({
                             <div className="flex justify-end gap-2">
                               <button
                                 onClick={() => handleEditValue(stateVariant)}
-                                className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+                                className="p-0 md:p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
                                 title="Edit"
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
                               <button
                                 onClick={() => handleDeleteItem(stateVariant)}
-                                className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                className="md:p-1.5 p-1 text-red-600 hover:bg-red-50 rounded transition-colors"
                                 title="Delete"
                               >
                                 {isDeleting === stateVariant.id ? (
@@ -523,7 +529,7 @@ export default function EditVariant({
                             Hex Code
                           </label>
                           {error.hexCode && (
-                            <span className="text-sm text-red-600">
+                            <span className="text-xs text-red-600">
                               {error.hexCode}
                             </span>
                           )}
@@ -542,7 +548,7 @@ export default function EditVariant({
                           />
                           <div
                             style={{ backgroundColor: addNewValue.hexCode }}
-                            className="w-8 h-8 rounded border border-gray-300"
+                            className="w-8 h-8 mt-1 rounded border border-gray-300"
                           ></div>
                         </div>
 
@@ -569,22 +575,24 @@ export default function EditVariant({
                       className="flex items-center gap-2 px-4 py-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors border border-dashed border-blue-300 hover:border-blue-400"
                     >
                       <Plus className="w-4 h-4" />
-                      <span className="font-medium">Add New variant</span>
+                      <span className="font-medium text-sm">
+                        Add New variant
+                      </span>
                     </button>
                   )}
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex justify-end gap-3 mt-8 pt-6 border-t border-gray-200">
+                <div className="flex flex-col sm:flex-row  justify-end gap-3 mt-8 pt-6 border-t w-full text-sm md:text-base">
                   <button
                     onClick={() => setOpen(false)}
-                    className="px-6 py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
+                    className="w-full sm:w-auto px-4 py-3 sm:px-5 sm:py-2.5 border border-gray-300 text-gray-700 font-medium rounded-lg hover:bg-gray-50 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     onClick={() => overrallSaveButton(variant.id)}
-                    className="px-6 py-2.5 bg-black text-white font-medium rounded-lg hover:bg-gray-900 transition-colors flex items-center gap-2"
+                    className="w-full sm:w-auto px-4 py-3 sm:px-5 sm:py-2.5 bg-black text-white font-medium rounded-lg hover:bg-gray-900 transition-colors flex items-center justify-center gap-2"
                   >
                     <Save className="w-4 h-4" />
                     Save Changes

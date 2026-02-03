@@ -38,7 +38,7 @@ export function DataTable<TData extends EditorValues>({
   });
 
   return (
-    <div className="rounded-md border">
+    <div className="rounded-md border ">
       <Table>
         <TableHeader>
           {table.getHeaderGroups().map((headerGroup) => (
@@ -58,7 +58,7 @@ export function DataTable<TData extends EditorValues>({
             </TableRow>
           ))}
         </TableHeader>
-        <TableBody>
+        <TableBody className="md:text-sm text-xs">
           {table.getRowModel().rows?.length ? (
             table.getRowModel().rows.map((row) => (
               <TableRow

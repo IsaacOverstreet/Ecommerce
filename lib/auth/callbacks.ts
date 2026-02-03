@@ -3,7 +3,7 @@ import { JWT } from "next-auth/jwt";
 import { AdapterUser } from "next-auth/adapters";
 import { Session } from "next-auth";
 import { PrismaClient } from "@prisma/client";
-import { logger } from "../utils/logger";
+import { logger } from "../../utils/logger";
 import { handleCustomerLogin } from "./actions/customer";
 
 const prisma = new PrismaClient();

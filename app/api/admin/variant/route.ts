@@ -1,7 +1,7 @@
-import { variantSchema } from "@/components/shared-component/variant-schema";
-import { prisma } from "@/lib/db/client";
-import { logger } from "@/lib/utils/logger";
-import { NewInputSchema } from "@/lib/utils/sharedUtils/validators";
+import { variantSchema } from "@/lib/validators/add-variant-schema";
+import { prisma } from "@/lib/prisma/client";
+import { logger } from "@/utils/logger";
+import { NewInputSchema } from "@/lib/sharedUtils/validators";
 import { NextResponse } from "next/server";
 import { ZodError } from "zod";
 
@@ -108,7 +108,7 @@ export async function POST(request: Request) {
           { status: 400 }
         );
       }
-      ///////////////////////////since all the boject in the array has the same name and description, then i can pick the first name and description to represent all.///////////////////////////////////////////
+      ///////////////////////////since all the object in the array has the same name and description, then i can pick the first name and description to represent all.///////////////////////////////////////////
       const { name, description, isColor } = body[0];
 
       ///////Check if colorName and hexCode exist//////

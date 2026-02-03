@@ -1,8 +1,8 @@
 import CredentialsProvider from "next-auth/providers/credentials";
-import { ratelimit } from "@/lib/utils/ratelimit";
+import { ratelimit } from "@/utils/ratelimit";
 import { verifyAdminCredentials } from "../actions/admin";
 import { adminLoginSchema } from "../schemas/auth";
-import { logger } from "@/lib/utils/logger";
+import { logger } from "@/utils/logger";
 // 3️⃣ Admin: Email + Password
 export const credentialsProviderAdmin = CredentialsProvider({
   id: "admin-credentials",
