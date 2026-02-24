@@ -23,6 +23,11 @@ export async function uploadFileToCloudinary(
   const result = await cloudinary.uploader.upload(base64, {
     folder: "products",
     resource_type: "image",
+    quality: "auto", // compress for best balance of size and quality
+    fetch_format: "auto", // serve modern formats like WebP/AVIF if possible
+    transformation: [
+      { width: 2000, crop: "limit" }, // optional: limit max dimensions
+    ],
   });
 
   return { public_id: result.public_id, secure_url: result.secure_url };

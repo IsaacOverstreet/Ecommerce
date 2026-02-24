@@ -1,3 +1,4 @@
+import { appError } from "@/lib/errorHandlers/appError";
 import { prisma } from "@/lib/prisma/client";
 import { CreateProductType } from "@/lib/validators/add-product-schema";
 import { uploadFileToCloudinary } from "@/utils/cloudinaryImgUpload";
@@ -25,7 +26,7 @@ export async function createProductService(payload: CreateProductType) {
       });
 
       if (existingProduct) {
-        throw new Error("A product with this slug already exists");
+        throw appError(409, "A product with this slug already exists");
       }
       const newProduct = await tx.product.create({
         data: productData,
@@ -53,7 +54,7 @@ export async function createProductService(payload: CreateProductType) {
       });
 
       if (existingCategory.length !== selectedCategories?.length) {
-        throw new Error("One or more categories do not exist");
+        throw appError(404, "One or more categories do not exist");
       }
       await tx.productCategory.createMany({
         data: selectedCategories.map((categoryId) => ({
@@ -68,7 +69,7 @@ export async function createProductService(payload: CreateProductType) {
         where: { sku: { in: productVariants.map((v) => v.sku) } },
       });
       if (existingSku) {
-        throw new Error(`SKU already exists: ${existingSku.sku}`);
+        throw appError(409, `SKU already exists: ${existingSku.sku}`);
       }
 
       //Add productVariant
@@ -82,7 +83,7 @@ export async function createProductService(payload: CreateProductType) {
       });
 
       if (existingVariantValues.length !== selectedVariantValues.length) {
-        throw new Error("One or more variant values do not exist");
+        throw appError(400, "One or more variant values do not exist");
       }
 
       for (const prod of productVariants) {

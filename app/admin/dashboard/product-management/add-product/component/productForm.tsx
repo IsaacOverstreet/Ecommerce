@@ -35,6 +35,7 @@ import { publishProduct } from "../services/publish";
 import { useConfirmation } from "@/hooks/useConfirmation";
 import { Loading } from "@/components/shared-component/loading";
 import SuccessCard from "@/components/shared-component/sucessCard";
+import { useRouter } from "next/navigation";
 
 interface ProductFormProp {
   initialCategories: Category[];
@@ -112,7 +113,7 @@ export default function ProductForm({
     metaTitle: "",
     metaDescription: "",
   });
-
+  const router = useRouter();
   const [images, setImages] = useState<ProductImage[]>([]);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
@@ -362,13 +363,16 @@ export default function ProductForm({
         try {
           setLoading(true);
           setError(null); // reset previous error
+          console.log("🚀 ~ onConfirm: ~ payload:");
           const payload = {
             productData,
             images,
             selectedCategories,
             productVariants,
           };
+
           const res = await publishProduct(payload);
+          router.refresh();
           setLoading(false);
           setShowSuccessCard(true);
           setSuccessMessage(res.message);
@@ -625,6 +629,7 @@ export default function ProductForm({
                                 ))}
                               </div>
                             )}
+
                             <div className="flex gap-2">
                               <input
                                 type="text"

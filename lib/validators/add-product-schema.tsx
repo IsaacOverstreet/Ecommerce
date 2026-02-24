@@ -117,7 +117,7 @@ export const ProductVariantSchema = z.array(
       .min(1, "Variant must have at least one value"),
   })
 );
-export type ProductVariantType = z.infer<typeof ProductImageSchema>;
+export type ProductVariantType = z.infer<typeof ProductVariantSchema>;
 
 //Payload Schema
 export const createProductPayloadSchema = z.object({

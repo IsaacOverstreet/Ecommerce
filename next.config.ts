@@ -33,7 +33,7 @@ const nextConfig: NextConfig = {
 
   // Optional: Image domain for Next.js Image component
   images: {
-    domains: ["images.unsplash.com", "cdn.example.com"],
+    domains: ["images.unsplash.com", "cdn.example.com", "res.cloudinary.com"],
   },
 };
 

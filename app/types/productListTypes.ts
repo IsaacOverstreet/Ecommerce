@@ -1,3 +1,13 @@
+export interface ProductResponse {
+  data: Product[];
+  meta: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
 export interface Product {
   id: string;
   name: string;
@@ -27,6 +37,7 @@ export interface Product {
 
   createdAt: string; // ISO string
   updatedAt: string;
+  deletedAt: string;
 
   images: ProductImage[];
   categories: ProductCategory[];
@@ -43,19 +54,28 @@ export interface ProductImage {
 export interface ProductCategory {
   id: string;
   categoryId: string;
-  name: string;
 }
 export interface ProductVariant {
   id: string;
   sku: string;
   price?: number;
   quantity: number;
+  updatedAt: string;
   isAvailableForPurchase: boolean;
 
   values: ProductVariantValue[];
 }
 export interface ProductVariantValue {
   id: string;
-  value: string;
-  type: string; // e.g. "Color", "Size"
+  variantId: string;
+  variantValueId: string;
+  // e.g. "Color", "Size"
+}
+
+//Product Meta type
+export interface ProductMetaType {
+  total: number;
+  page: number;
+  limit: number;
+  totalPages: number;
 }

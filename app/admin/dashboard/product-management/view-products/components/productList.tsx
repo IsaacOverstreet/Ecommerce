@@ -1,37 +1,64 @@
-import { useState, useEffect } from "react";
+"use client";
+import { useState, useEffect, useRef } from "react";
 import { Search, Filter, Eye, Edit, Power, PowerOff } from "lucide-react";
-import type { ProductWithRelations, Category } from "../lib/database.types";
-
 import {
   getCategories,
   getProducts,
-  ProductFilters,
   toggleProductStatus,
 } from "../service/viewProductService";
 import { ProductInfoModal } from "./productInfoModal";
 import { ProductEditModal } from "./productEditModal";
+import { Product, ProductMetaType } from "@/app/types/productListTypes";
+import { ProductFilters } from "@/lib/validators/searchParams";
+import { Category } from "@/app/types/categoryTypes";
+import { logger } from "@/utils/logger";
+import Image from "next/image";
+import { formatNumber } from "@/utils/formatPrice";
 
-export function ProductList() {
-  const [products, setProducts] = useState<ProductWithRelations[]>([]);
+
+interface allProductProp {
+  productMeta: ProductMetaType;
+}
+
+export function ProductList({ productMeta }: allProductProp) {
+  const [products, setProducts] = useState<Product[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filters, setFilters] = useState<ProductFilters>({});
-  const [selectedProduct, setSelectedProduct] =
-    useState<ProductWithRelations | null>(null);
-  const [editingProduct, setEditingProduct] =
-    useState<ProductWithRelations | null>(null);
+  const [filters, setFilters] = useState<ProductFilters>({
+    search: "",
+    page: 1,
+    limit: 5,
+    sortBy: "newest",
+    stockStatus: "all",
+    availability: "all",
+  });
+  const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
+  const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [showFilters, setShowFilters] = useState(false);
+
+  // const pageNumber = useRef(filters.page);
+  const [loadMore, setLoadMore] = useState(false);
+  const [page, setPage] = useState(1);
+  const [clientFetchTotal, setClientFetchTotal] = useState(0);
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     loadProducts();
     loadCategories();
-  }, [filters]);
+  }, []);
 
   async function loadProducts() {
     try {
       setLoading(true);
       const data = await getProducts(filters);
-      setProducts(data);
+      console.log("🚀 ~ loadProducts ~ products:", products);
+      if (data === undefined) {
+        throw new Error("Failed to load products");
+      }
+      setProducts(data.data);
+
+      setClientFetchTotal(data.meta.total);
+      console.log("clientFetchTotal", data.meta.total);
     } catch (error) {
       console.error("Failed to load products:", error);
     } finally {
@@ -44,10 +71,12 @@ export function ProductList() {
       const data = await getCategories();
       setCategories(data);
     } catch (error) {
-      console.error("Failed to load categories:", error);
+      logger.error("Failed to load categories:", error);
     }
   }
+  const categoryMap = new Map(categories.map((c) => [c.id, c.name]));
 
+  //TOGGLE PRODUCT STATUS
   async function handleToggleStatus(productId: string, currentStatus: boolean) {
     try {
       await toggleProductStatus(productId, !currentStatus);
@@ -57,22 +86,89 @@ export function ProductList() {
         )
       );
     } catch (error) {
-      console.error("Failed to toggle product status:", error);
+      logger.error("Failed to toggle product status:", error);
     }
   }
 
-  function handleSearch(search: string) {
-    setFilters({ ...filters, search });
+  async function getMoreProducts() {
+    try {
+      setLoadMore(true);
+      console.log("🚀 ~ getMoreProducts ~ page:", page);
+      const nextpage = page + 1;
+
+      const newFilter = { ...filters, page: nextpage };
+
+      console.log("🚀 ~ getMoreProducts ~ newFilter:", newFilter);
+
+      setFilters(newFilter);
+
+      const data = await getProducts(newFilter);
+
+      if (data === undefined) {
+        throw new Error("Failed to load products");
+      }
+      console.log("🚀 ~ getMoreProducts ~ data:", data.data);
+
+      setProducts((prev) => [...prev, ...data.data]);
+      setPage(nextpage);
+      console.log("Products ", products);
+    } catch (error) {
+      logger.error(error);
+    } finally {
+      setLoadMore(false);
+    }
   }
 
-  //   function getPrimaryImage(product: ProductWithRelations): string {
-  //     const primary = product.images?.find((img) => img.is_primary);
-  //     return (
-  //       primary?.url ||
-  //       product.images?.[0]?.url ||
-  //       "https://images.pexels.com/photos/4497591/pexels-photo-4497591.jpeg?auto=compress&cs=tinysrgb&w=200"
-  //     );
-  //   }
+  async function updateFilter<K extends keyof ProductFilters>(
+    key: K,
+    value: ProductFilters[K]
+  ) {
+    const newFilter: ProductFilters = {
+      ...filters,
+      [key]: value,
+      page: 1,
+    };
+    setFilters(newFilter);
+    setPage(newFilter.page);
+
+    const data = await getProducts(newFilter);
+    if (data === undefined) {
+      throw new Error("Failed to load products");
+    }
+    setClientFetchTotal(data.meta.total);
+    setProducts(data.data);
+  }
+
+  function handleSearch(search: string) {
+    const newFilter: ProductFilters = {
+      search,
+      page: 1,
+      limit: 2,
+      sortBy: "newest",
+      stockStatus: "all",
+      availability: "all",
+    };
+    setFilters(newFilter);
+
+    if (searchTimeout.current) {
+      clearTimeout(searchTimeout.current);
+    }
+    console.log("adhvjhdaddcad");
+    searchTimeout.current = setTimeout(async () => {
+      const data = await getProducts(newFilter);
+      if (data === undefined) {
+        throw new Error("Failed to load products");
+      }
+      setClientFetchTotal(data.meta.total);
+      setProducts(data.data);
+    }, 500);
+  }
+
+  function getPrimaryImage(product: Product): string {
+    const primary = product.images?.find((img) => img.isPrimary);
+
+    return primary?.url || product.images?.[0]?.url;
+  }
 
   function getStockStatus(quantity: number): { label: string; color: string } {
     if (quantity === 0)
@@ -88,6 +184,26 @@ export function ProductList() {
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900 mb-2">Products</h1>
           <p className="text-gray-600">Manage your product inventory</p>
+
+          {/* Stats */}
+          <div className="mb-6 mt-4 ">
+            <div
+              onClick={loadProducts}
+              className="inline-flex items-center gap-4 bg-white border border-slate-200 rounded-xl px-6 py-4 shadow-sm"
+            >
+              <div className="flex items-center justify-center  w-10 h-10 rounded-lg bg-blue-100 text-blue-600">
+                📦
+              </div>
+              <div>
+                <p className="text-xs font-medium text-slate-500 uppercase">
+                  Total Products
+                </p>
+                <p className="text-2xl font-semibold text-slate-900">
+                  {productMeta.total}
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div className="bg-white rounded-lg shadow-sm mb-6">
@@ -112,22 +228,16 @@ export function ProductList() {
               <select
                 value={filters.sortBy || ""}
                 onChange={(e) =>
-                  setFilters({
-                    ...filters,
-                    sortBy: e.target.value as
-                      | "price_asc"
-                      | "price_desc"
-                      | "created_asc"
-                      | "created_desc"
-                      | "stock_asc"
-                      | "stock_desc",
-                  })
+                  updateFilter(
+                    "sortBy",
+                    e.target.value as ProductFilters["sortBy"]
+                  )
                 }
                 className="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               >
                 <option value="">Sort by...</option>
-                <option value="created_desc">Newest First</option>
-                <option value="created_asc">Oldest First</option>
+                <option value="newest">Newest First</option>
+                <option value="oldest">Oldest First</option>
                 <option value="price_asc">Price: Low to High</option>
                 <option value="price_desc">Price: High to Low</option>
                 <option value="stock_desc">Stock: High to Low</option>
@@ -144,10 +254,10 @@ export function ProductList() {
                   <select
                     value={filters.categoryId || ""}
                     onChange={(e) =>
-                      setFilters({
-                        ...filters,
-                        categoryId: e.target.value || undefined,
-                      })
+                      updateFilter(
+                        "categoryId",
+                        e.target.value as ProductFilters["categoryId"]
+                      )
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
@@ -166,13 +276,10 @@ export function ProductList() {
                   <select
                     value={filters.availability || "all"}
                     onChange={(e) =>
-                      setFilters({
-                        ...filters,
-                        availability: e.target.value as
-                          | "all"
-                          | "available"
-                          | "unavailable",
-                      })
+                      updateFilter(
+                        "availability",
+                        e.target.value as ProductFilters["availability"]
+                      )
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
@@ -188,14 +295,10 @@ export function ProductList() {
                   <select
                     value={filters.stockStatus || "all"}
                     onChange={(e) =>
-                      setFilters({
-                        ...filters,
-                        stockStatus: e.target.value as
-                          | "all"
-                          | "in_stock"
-                          | "low_stock"
-                          | "out_of_stock",
-                      })
+                      updateFilter(
+                        "stockStatus",
+                        e.target.value as ProductFilters["stockStatus"]
+                      )
                     }
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
@@ -243,7 +346,7 @@ export function ProductList() {
                       Loading products...
                     </td>
                   </tr>
-                ) : products.length === 0 ? (
+                ) : products?.length === 0 ? (
                   <tr>
                     <td
                       colSpan={6}
@@ -253,7 +356,7 @@ export function ProductList() {
                     </td>
                   </tr>
                 ) : (
-                  products.map((product) => {
+                  products?.map((product) => {
                     const stockStatus = getStockStatus(product.quantity);
                     return (
                       <tr
@@ -262,19 +365,26 @@ export function ProductList() {
                       >
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
-                            {/* <img
+                            <Image
                               src={getPrimaryImage(product)}
                               alt={product.name}
                               className="w-12 h-12 rounded-lg object-cover"
-                            /> */}
+                              width="300"
+                              height="300"
+                            />
                             <div className="ml-4">
                               <div className="text-sm font-medium text-gray-900">
                                 {product.name}
                               </div>
-                              <div className="text-sm text-gray-500">
-                                {product.categories?.[0]?.name ||
-                                  "Uncategorized"}
-                              </div>
+                              {product.categories.map((cat) => (
+                                <div
+                                  key={cat.id}
+                                  className="text-sm text-gray-500"
+                                >
+                                  {categoryMap.get(cat.categoryId) ||
+                                    "Uncategorized"}
+                                </div>
+                              ))}
                             </div>
                           </div>
                         </td>
@@ -285,11 +395,11 @@ export function ProductList() {
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="text-sm font-medium text-gray-900">
-                            ${product.price.toFixed(2)}
+                            #{formatNumber(product.price)}
                           </div>
-                          {product.compare_at_price > 0 && (
+                          {product.compareAtPrice !== undefined && (
                             <div className="text-sm text-gray-500 line-through">
-                              ${product.compare_at_price.toFixed(2)}
+                              #{formatNumber(product.compareAtPrice)}
                             </div>
                           )}
                         </td>
@@ -355,13 +465,27 @@ export function ProductList() {
                 )}
               </tbody>
             </table>
+            {/* View more (table footer style) */}
+            {clientFetchTotal !== null && (
+              <button
+                className="w-[100%] border-t border flex flex-col border-slate-200 bg-slate-50"
+                disabled={products.length >= clientFetchTotal}
+                onClick={getMoreProducts}
+              >
+                <div className="flex items-center justify-center gap-2 py-5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 cursor-pointer transition">
+                  <span>{loadMore ? "Loading..." : "Load more products"}</span>
+                </div>
+              </button>
+            )}
           </div>
         </div>
       </div>
 
       {selectedProduct && (
         <ProductInfoModal
-          product={selectedProduct}
+          selectedProduct={selectedProduct}
+          categories={categories}
+        
           onClose={() => setSelectedProduct(null)}
           onEdit={(product) => {
             setSelectedProduct(null);

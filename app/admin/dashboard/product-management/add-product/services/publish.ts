@@ -24,11 +24,6 @@ export async function publishProduct(payload: CreateProductType) {
     formData.append("selectedCategories", JSON.stringify(selectedCategories));
     formData.append("productVariants", JSON.stringify(productVariants));
 
-    // images.forEach((img, index) => {
-    //   formData.append(`images`, img.file); // REAL file
-    //   formData.append(`isPrimary_${index}`, String(img.isPrimary));
-    // });
-
     images.forEach((img) => {
       formData.append("images", img.file);
       formData.append(
@@ -44,6 +39,7 @@ export async function publishProduct(payload: CreateProductType) {
         headers: { "Content-Type": "multipart/form-data" },
       }
     );
+
     console.log("🚀 ~ publishProduct ~ res:", res.data);
 
     return res.data;

@@ -14,19 +14,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
   const productVariants = JSON.parse(formData.get("productVariants") as string);
   const files = formData.getAll("images") as File[];
 
-  // const images = files.map((file, index) => {
-  //   const metaRaw = formData.get(`isPrimary_${index}`);
-  //   const meta = metaRaw ? JSON.parse(metaRaw.toString()) : {};
-  //   console.log("🚀 ~ images ~ metaRaw:", metaRaw);
-  //   console.log("🚀 ~ images ~ meta:", meta);
-
-  //   return {
-  //     file,
-  //     isPrimary: meta,
-  //   };
-  // });
-  // console.log("🚀 ~ images ~ images:", images);
-
   const metas = formData
     .getAll("images_meta")
     .map((m) => JSON.parse(m as string));
