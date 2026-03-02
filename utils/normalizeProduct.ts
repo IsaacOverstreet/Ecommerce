@@ -21,15 +21,6 @@ function isDecimal(value: unknown): value is Decimal {
 const toISOStringSafe = (date: Date | string) =>
   date instanceof Date ? date.toISOString() : new Date(date).toISOString();
 
-// function normalizeImages(images: { url: string; isPrimary: boolean }[]) {
-//   return images.map((img) => ({
-//     ...img,
-//     url: img.url.startsWith("http")
-//       ? img.url
-//       : `https://res.cloudinary.com/YOUR_CLOUD_NAME/${img.url}`,
-//   }));
-// }
-
 function normalizeImageUrl(url: string) {
   if (!url) {
     return "url not found";

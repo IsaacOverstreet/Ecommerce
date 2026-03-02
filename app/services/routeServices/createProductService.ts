@@ -39,6 +39,7 @@ export async function createProductService(payload: CreateProductType) {
         await tx.productImage.createMany({
           data: uploaded.map((img, idx) => ({
             productId: newProduct.id,
+            publicId: img.publicId,
             url: img.url,
             isPrimary: img.isPrimary,
             altText: newProduct.name,

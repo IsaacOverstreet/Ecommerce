@@ -262,21 +262,6 @@ export default function ProductForm({
     setProductVariants((prev) => [...prev, newGroup]);
   };
 
-  // const updateVariant = (groupId: string, updates: Partial<ProductVariant>) => {
-  //   setProductVariants((prev) =>
-  //     prev.map((group) =>
-  //       group.id === groupId
-  //         ? {
-  //             ...group,
-  //             variants: group.variants.map((variant) =>
-  //               variant.id === variantId ? { ...variant, ...updates } : variant
-  //             ),
-  //           }
-  //         : group
-  //     )
-  //   );
-  // };
-
   const handleGenerateProductSku = (productName: string) => {
     const SKU = generateProductSKU(productName);
     console.log("🚀 ~ handleGenerateSKU ~ SKU:", SKU);
@@ -327,13 +312,6 @@ export default function ProductForm({
     );
     console.log("product", productVariants);
   };
-
-  // const getVariantType = (variantTypeId: string) => {
-  //   const found = variants.find((v) => v.id === variantTypeId);
-  //   console.log("🚀 ~ getVariantType ~ found:", found);
-
-  //   return found;
-  // };
 
   const variantMap = useMemo(() => {
     const map: Record<string, Variants> = {};

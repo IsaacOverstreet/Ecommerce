@@ -1,15 +1,28 @@
 "use client";
-import { useState, useEffect, useMemo } from "react";
-import { X, Save, ChevronDown, ChevronUp, Plus, Tag } from "lucide-react";
+import { useState, useEffect, useMemo, useRef } from "react";
+import {
+  X,
+  Save,
+  ChevronDown,
+  ChevronUp,
+  Plus,
+  Tag,
+  Upload,
+} from "lucide-react";
 // import { updateProduct, getCategories } from "../lib/products.service";
 import { v4 as uuidv4 } from "uuid";
 import { getCategories, updateProduct } from "../service/viewProductService";
-import { Product, ProductCategory } from "@/app/types/productListTypes";
+import {
+  Product,
+  ProductCategory,
+  ProductImage,
+} from "@/app/types/productListTypes";
 import {
   ProductVariantType,
   type ProductType,
 } from "@/lib/validators/add-product-schema";
 import Image from "next/image";
+import { Category } from "@/app/types/categoryTypes";
 import {
   generateProductSKU,
   generateVariantSKU,
@@ -17,6 +30,12 @@ import {
 import { formatNumber } from "@/utils/formatPrice";
 import { fetchVariants } from "../../add-variants/service/variantServices";
 import { Variants } from "../../add-variants/utils/variantTypes";
+import { nanoid } from "nanoid";
+import { useConfirmation } from "@/hooks/useConfirmation";
+import SuccessCard from "@/components/shared-component/sucessCard";
+import Loading from "../loading";
+import { toast } from "react-toastify";
+import { handleUiError } from "@/lib/errorHandlers/uiErrors";
 
 interface ProductEditModalProps {
   product: Product;
@@ -33,30 +52,16 @@ export type ProductVariant = {
   values: string[];
 };
 
-// export type ProductVariantValue = {
-//   variantValueId: string;
-// };
-
-// interface FormData {
-//   name: string;
-//   sku: string;
-//   slug: string;
-//   description: string;
-//   tags: string;
-//   price: string;
-//   compare_at_price: string;
-//   quantity: string;
-//   track_quantity: boolean;
-//   is_available: boolean;
-//   active: boolean;
-//   weight: string;
-//   length: string;
-//   width: string;
-//   height: string;
-//   url_handle: string;
-//   meta_title: string;
-//   meta_description: string;
-// }
+interface EditProductImage {
+  id?: string; // Existing images have DB id; new images may not yet
+  file?: File | null; // Only new images will have a File
+  previewUrl: string;
+  isPrimary: boolean;
+  url?: string; // Existing image URL
+  altText?: string;
+  publicId?: string | null; // Cloudinary public_id
+  order: number;
+}
 
 export function ProductEditModal({
   product,
@@ -83,6 +88,7 @@ export function ProductEditModal({
     metaTitle: product.metaTitle,
     metaDescription: product.metaDescription,
   });
+
   const [newTag, setNewTag] = useState("");
   const [editvariants, setEditVariants] = useState<ProductVariant[]>(
     product.variants.map((item) => ({
@@ -92,8 +98,25 @@ export function ProductEditModal({
       values: item.values.map((v) => v.variantValueId),
     }))
   );
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const [images, setImages] = useState<EditProductImage[]>(
+    product.images.map((img) => ({
+      id: img.id,
+      file: null,
+      previewUrl: img.url, // preview for existing image
+      isPrimary: img.isPrimary ?? false,
+      url: img.url,
+      altText: img.altText ?? "",
+      publicId: img.publicId ?? null,
+      order: img.order ?? 0,
+    }))
+  );
 
-  const [categories, setCategories] = useState<ProductCategory[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+
+  const [selectedCategories, setSelectedCategories] = useState<string[]>(
+    product.categories.map((cat) => cat.categoryId)
+  );
   const [variants, setVariant] = useState<Variants[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -109,6 +132,10 @@ export function ProductEditModal({
     dimensions: false,
     seo: false,
   });
+
+  const { ConfirmationDialog, confirm } = useConfirmation();
+  const [successMessage, setSuccessMessage] = useState("");
+  const [showSuccessCard, setShowSuccessCard] = useState(false);
 
   useEffect(() => {
     loadCategories();
@@ -127,6 +154,50 @@ export function ProductEditModal({
       console.error("Failed to load categories:", error);
     }
   }
+
+  //ONCHANGE IMAGE
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log(e.target.files);
+
+    if (!e.target.files) return;
+    const selectedFiles: File[] = Array.from(e.target.files);
+
+    // max of 4 images
+    if (images.length + selectedFiles.length > 4) {
+      alert("You can only upload a maximum of 4 images");
+      return;
+    }
+
+    const newImages: EditProductImage[] = selectedFiles.map((file, index) => ({
+      id: nanoid(), // temp id for React key
+      file,
+      previewUrl: URL.createObjectURL(file),
+      isPrimary: false,
+      url: "",
+      publicId: null,
+      altText: "",
+      order: images.length + index, // assign display order
+    }));
+
+    setImages((prev) => [...prev, ...newImages]); // append to state
+  };
+
+  const handleImageChooseButton = () => {
+    fileInputRef.current?.click();
+  };
+
+  const handleRemoveImage = (id: string) => {
+    setImages((prev) => prev.filter((img) => img.id != id));
+  };
+
+  const handlePrimaryImageSelection = (id: string) => {
+    setImages((prev) =>
+      prev.map((img) => ({
+        ...img,
+        isPrimary: img.id === id ? true : false,
+      }))
+    );
+  };
 
   const variantMap = useMemo(() => {
     const map: Record<string, Variants> = {};
@@ -242,121 +313,170 @@ export function ProductEditModal({
     }));
   };
 
+  const addCategory = (categoryId: string) => {
+    if (!selectedCategories.includes(categoryId)) {
+      setSelectedCategories((prev) => [...prev, categoryId]);
+    }
+  };
+
+  const removeCategory = (categoryId: string) => {
+    setSelectedCategories((prev) => prev.filter((id) => id !== categoryId));
+  };
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setSaving(true);
-    setError(null);
+    confirm({
+      message: "Are you sure you want to save?",
 
-    try {
-      // const tags = product.tag
-      //   // .split(",")
-      //   .map((tag) => tag.trim())
-      //   .filter(Boolean);
+      onConfirm: async () => {
+        try {
+          setSaving(true);
+          setError(null); // reset previous error
+          console.log("🚀 ~ onConfirm: ~ payload:");
+          const payload = {
+            productData,
+            images,
+            selectedCategories,
+            productVariants,
+          };
 
-      await updateProduct(product.id, {
-        name: formData.name,
-        sku: formData.sku,
-        slug: formData.slug,
-        description: formData.description,
-        tag: formData.tag,
-        price: formData.price || 0,
-        compare_at_price: formData.compareAtPrice || 0,
-        quantity: formData.quantity || 0,
-        track_quantity: formData.trackQuantity,
-        is_available: formData.isAvailableForPurchase,
-        active: formData.active,
-        weight: formData.weight || 0,
-        length: formData.length || 0,
-        width: formData.width || 0,
-        height: formData.height || 0,
-        url_handle: formData.urlHandle,
-        meta_title: formData.metaTitle,
-        meta_description: formData.metaDescription,
-      });
+          const res = await publishProduct(payload);
+          setSaving(false);
+          setShowSuccessCard(true);
+          setSuccessMessage(res.message);
+          onSave(); /////LOOK into here too
 
-      onSave();
-    } catch (err) {
-      console.error("Failed to save product:", err);
-      setError("Failed to save product. Please try again.");
-    } finally {
-      setSaving(false);
-    }
+          console.log("🚀 Response:", res);
+        } catch (err: unknown) {
+          console.log("🚀 ~ onConfirm: ~ err:", err);
+          handleUiError(err);
+          setError(err as string); /////LOOK INTO THIS PART
+          setSaving(false);
+        } finally {
+          cleanupBlobs();
+        }
+      },
+    });
   }
+  const handleCancel = () => {
+    confirm({
+      message: "Are you sure you want to cancel? Unsaved changes will be lost.",
+      onConfirm: () => {
+        cleanupBlobs(); // Revoke all blob URLs
+        onClose(); // Close the modal
+      },
+    });
+  };
+
+  const cleanupBlobs = () => {
+    images.forEach(
+      (img) => img.previewUrl && URL.revokeObjectURL(img.previewUrl)
+    );
+    setImages([]);
+  };
+
+  const closeSuccessCard = () => {
+    window.location.reload();
+  };
 
   return (
     <div className="fixed inset-0 flex items-center justify-center z-50 p-4">
+      <ConfirmationDialog />
+      {showSuccessCard && (
+        <SuccessCard message={successMessage} onClose={closeSuccessCard} />
+      )}
+      {/* ProgressBar */}
+      {saving && <Loading />}
       <div className="absolute inset-0 bg-black/20 backdrop-blur-sm"></div>
       <div className="relative bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col">
-        <div className="flex items-center justify-between p-6 border-b border-gray-200">
-          <h2 className="text-2xl font-bold text-gray-900">Edit Product</h2>
-          <button
-            onClick={onClose}
-            className="p-2 hover:bg-gray-100 rounded-lg transition-colors"
-          >
-            <X className="w-6 h-6" />
-          </button>
-        </div>
-
-        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 p-6">
+        <div className="border-b border-gray-200 bg-white">
           {error && (
-            <div className="mb-6 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg">
-              {error}
+            <div className="px-6 pt-6">
+              <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 text-red-700 rounded-xl shadow-sm">
+                <span className="text-sm font-medium">{error}</span>
+              </div>
             </div>
           )}
 
+          <div className="flex items-center justify-between px-6 py-5">
+            <h2 className="text-2xl font-semibold text-gray-900 tracking-tight">
+              Edit Product
+            </h2>
+
+            <button
+              onClick={handleCancel}
+              className="p-2 rounded-xl hover:bg-gray-100 active:scale-95 transition-all duration-200"
+            >
+              <X className="w-5 h-5 text-gray-600" />
+            </button>
+          </div>
+        </div>
+
+        <form onSubmit={handleSubmit} className="overflow-y-auto flex-1 p-6">
           <div className="space-y-6">
             <Section
               title="Basic Information"
               expanded={expandedSections.basic}
               onToggle={() => toggleSection("basic")}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Name */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.name}
                     onChange={(e) => handleChange("name", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     required
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+
+                {/* SKU */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     SKU <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="text"
-                    value={formData.sku}
-                    onChange={(e) => handleChange("sku", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
-                    required
-                  />
-                  <button
-                    disabled={!formData.name}
-                    type="button"
-                    onClick={() => handleGenerateProductSku(formData.name)}
-                    className="bg-blue-600 text-white px-4 py-0.5 rounded-lg font-medium shadow-sm hover:bg-blue-700 hover:shadow-md active:scale-95 transition-all duration-200"
-                  >
-                    Generate SKU
-                  </button>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={formData.sku}
+                      onChange={(e) => handleChange("sku", e.target.value)}
+                      className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                      required
+                    />
+
+                    <button
+                      disabled={!formData.name}
+                      type="button"
+                      onClick={() => handleGenerateProductSku(formData.name)}
+                      className="px-4 py-2.5 bg-blue-600 text-white rounded-xl font-medium shadow-sm hover:bg-blue-700 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      Generate
+                    </button>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+
+                {/* Slug */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Slug <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.slug}
                     onChange={(e) => handleChange("slug", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl font-mono focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     required
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+
+                {/* Tags */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-gray-700">
                     Tags
                   </label>
 
@@ -365,12 +485,12 @@ export function ProductEditModal({
                       {formData.tag.map((tag, index) => (
                         <span
                           key={index}
-                          className="inline-flex items-center gap-1 px-3 py-1 bg-blue-100 text-blue-800 text-sm rounded-full"
+                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-blue-50 text-blue-700 text-sm rounded-full border border-blue-200"
                         >
                           {tag}
                           <div
                             onClick={() => removeTag(tag)}
-                            className="text-blue-600 hover:text-blue-800 transition-colors"
+                            className="cursor-pointer text-blue-500 hover:text-blue-700 transition"
                           >
                             <X className="w-3 h-3" />
                           </div>
@@ -378,24 +498,30 @@ export function ProductEditModal({
                       ))}
                     </div>
                   )}
-                  <input
-                    type="text"
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    placeholder="tags"
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                  <button
-                    disabled={!formData.name}
-                    type="button"
-                    onClick={addTag}
-                    className="px-4 py-3 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-all duration-200"
-                  >
-                    <Plus className="w-4 h-4" />
-                  </button>
+
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newTag}
+                      onChange={(e) => setNewTag(e.target.value)}
+                      placeholder="Add a tag..."
+                      className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    />
+
+                    <button
+                      disabled={!formData.name}
+                      type="button"
+                      onClick={addTag}
+                      className="px-4 py-2.5 bg-gray-100 text-gray-700 rounded-xl hover:bg-gray-200 active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      <Plus className="w-4 h-4" />
+                    </button>
+                  </div>
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+
+                {/* Description */}
+                <div className="md:col-span-2 space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Description
                   </label>
                   <textarea
@@ -404,7 +530,7 @@ export function ProductEditModal({
                       handleChange("description", e.target.value)
                     }
                     rows={4}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
                   />
                 </div>
               </div>
@@ -415,13 +541,15 @@ export function ProductEditModal({
               expanded={expandedSections.pricing}
               onToggle={() => toggleSection("pricing")}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Price */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Price <span className="text-red-500">*</span>
                   </label>
+
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
                       #
                     </span>
                     <input
@@ -431,17 +559,20 @@ export function ProductEditModal({
                       value={formData.price}
                       onWheel={(e) => e.currentTarget.blur()}
                       onChange={(e) => handleChange("price", e.target.value)}
-                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                       required
                     />
                   </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+
+                {/* Compare at Price */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Compare at Price
                   </label>
+
                   <div className="relative">
-                    <span className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500">
+                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
                       #
                     </span>
                     <input
@@ -453,7 +584,7 @@ export function ProductEditModal({
                       onChange={(e) =>
                         handleChange("compareAtPrice", e.target.value)
                       }
-                      className="w-full pl-8 pr-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                      className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     />
                   </div>
                 </div>
@@ -465,21 +596,27 @@ export function ProductEditModal({
               expanded={expandedSections.inventory}
               onToggle={() => toggleSection("inventory")}
             >
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Quantity */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Quantity <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="number"
                     value={formData.quantity}
                     onChange={(e) => handleChange("quantity", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     required
                   />
                 </div>
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 cursor-pointer">
+
+                {/* Settings */}
+                <div className="space-y-4 bg-gray-50 p-4 rounded-xl border border-gray-200">
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <span className="text-sm font-medium text-gray-700">
+                      Track Quantity
+                    </span>
                     <input
                       type="checkbox"
                       checked={formData.trackQuantity}
@@ -488,11 +625,12 @@ export function ProductEditModal({
                       }
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    <span className="text-sm font-medium text-gray-700">
-                      Track Quantity
-                    </span>
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
+
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <span className="text-sm font-medium text-gray-700">
+                      Available for Purchase
+                    </span>
                     <input
                       type="checkbox"
                       checked={formData.isAvailableForPurchase}
@@ -501,20 +639,18 @@ export function ProductEditModal({
                       }
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    <span className="text-sm font-medium text-gray-700">
-                      Available for Purchase
-                    </span>
                   </label>
-                  <label className="flex items-center gap-2 cursor-pointer">
+
+                  <label className="flex items-center justify-between cursor-pointer">
+                    <span className="text-sm font-medium text-gray-700">
+                      Active
+                    </span>
                     <input
                       type="checkbox"
                       checked={formData.active}
                       onChange={(e) => handleChange("active", e.target.checked)}
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
                     />
-                    <span className="text-sm font-medium text-gray-700">
-                      Active
-                    </span>
                   </label>
                 </div>
               </div>
@@ -525,79 +661,60 @@ export function ProductEditModal({
               expanded={expandedSections.variants}
               onToggle={() => toggleSection("variants")}
             >
-              {/* <div className="text-sm text-gray-600">
-                {product.variants && product.variants.length > 0 ? (
-                  <div className="space-y-2">
-                    {product.variants.map((variant) => (
-                      <div
-                        key={variant.id}
-                        className="p-3 bg-gray-50 rounded-lg"
-                      >
-                        {variant.values.map((val) => (
-                          <div key={val.id}>
-                            <div className="font-medium">{val.value}</div>
-                          </div>
-                        ))}
-                        <div className="text-xs text-gray-500">
-                          SKU: {variant.sku} | Price: ${variant.price} |
-                          Quantity: {variant.quantity}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ) : (
-                  <p>No variants for this product</p>
-                )}
-              </div> */}
               <div>
-                {/* <button
-                  // onClick={addVariantGroup}
-                  className="w-full sm:w-auto px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200 flex items-center justify-center gap-2"
-                >
-                  <Plus className="w-4 h-4" />
-                  Add Variant Group
-                </button> */}
                 {editvariants.length === 0 ? (
-                  <div className="text-center py-12 bg-gray-50 rounded-lg border-2 border-dashed border-gray-300">
+                  <div className="text-center py-14 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
                     <Tag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-medium text-gray-900 mb-2">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">
                       No variants yet
                     </h3>
-                    <p className="text-gray-500 mb-4 px-4">
+                    <p className="text-gray-500 mb-6 max-w-sm mx-auto">
                       Add variant groups like Size, Color, or Material to create
                       product options
                     </p>
                     <button
                       onClick={addVariantGroup}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200"
+                      className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 active:scale-95 transition-all duration-200"
                     >
                       Add First Variant Group
                     </button>
                   </div>
                 ) : (
-                  <div className="space-y-6">
-                    <button
-                      onClick={addVariantGroup}
-                      className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-all duration-200"
-                    >
-                      Add new variant
-                    </button>
+                  <div className="space-y-8">
+                    <div className="flex justify-end">
+                      <button
+                        type="button"
+                        onClick={addVariantGroup}
+                        className="px-5 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 active:scale-95 transition-all duration-200"
+                      >
+                        Add New Variant
+                      </button>
+                    </div>
+
                     {editvariants.map((group) => {
                       const selectedVariant = variantMap[group.variantTypeId];
 
                       return (
                         <div
                           key={group.id}
-                          className="bg-gray-50 rounded-lg p-6 border border-gray-200"
+                          className="relative bg-white border border-gray-200 rounded-2xl p-6 shadow-sm space-y-6"
                         >
-                          {/* Variant Options Grid */}
-                          <div className="space-y-3">
-                            <label className="block text-sm font-semibold text-gray-700 mb-3">
+                          {/* Remove Button */}
+                          <button
+                            type="button"
+                            onClick={() => removeVariant(group.id)}
+                            className="absolute top-4 right-4 p-2 text-red-500 hover:bg-red-50 rounded-lg transition"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+
+                          {/* Variant Type */}
+                          <div className="space-y-2">
+                            <label className="block text-sm font-semibold text-gray-700">
                               Variant Type *
                             </label>
                             <select
                               value={group.variantTypeId}
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                               onChange={(e) =>
                                 handleVariantChange(
                                   group.id,
@@ -605,85 +722,94 @@ export function ProductEditModal({
                                   e.target.value
                                 )
                               }
+                              className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                             >
-                              <option value="">select variant type</option>
+                              <option value="">Select variant type</option>
                               {variants?.map((variant) => (
                                 <option value={variant.id} key={variant.id}>
                                   {variant.name}
                                 </option>
                               ))}
                             </select>
+                          </div>
 
-                            {selectedVariant && (
-                              <div>
-                                <label className="block text-sm font-semibold text-gray-700 mb-3">
-                                  Value *
-                                </label>
-
-                                <select
-                                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                                  onChange={(e) => {
-                                    handleVariantChange(
-                                      group.id,
-                                      "values",
-                                      e.target.value
-                                    );
-                                  }}
-                                >
-                                  <option value="">select a value</option>
-
-                                  {selectedVariant?.values
-                                    ?.filter(
-                                      (v) => !group.values.includes(v.id)
-                                    )
-                                    .map((val) => (
-                                      <option value={val.id} key={val.id}>
-                                        {val.name}
-                                      </option>
-                                    ))}
-                                </select>
-                              </div>
-                            )}
-
-                            <label className="block text-sm font-semibold text-gray-700 mb-3">
-                              Price *
-                            </label>
-                            <input
-                              type="number"
-                              value={group.price ? group.price : ""}
-                              onChange={(e) =>
-                                handleVariantChange(
-                                  group.id,
-                                  "price",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              placeholder="0.00"
-                              step="0.01"
-                            />
-                            <label className="block text-sm font-semibold text-gray-700 mb-3">
-                              Quantity *
-                            </label>
-                            <input
-                              type="number"
-                              value={group.quantity || ""}
-                              onChange={(e) =>
-                                handleVariantChange(
-                                  group.id,
-                                  "quantity",
-                                  e.target.value
-                                )
-                              }
-                              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                              placeholder="Qty"
-                            />
-
-                            {/* working here */}
-                            <div>
-                              <label className="block text-sm font-semibold text-gray-700 mb-3">
-                                SKU *
+                          {/* Value */}
+                          {selectedVariant && (
+                            <div className="space-y-2">
+                              <label className="block text-sm font-semibold text-gray-700">
+                                Value *
                               </label>
+                              <select
+                                onChange={(e) =>
+                                  handleVariantChange(
+                                    group.id,
+                                    "values",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                              >
+                                <option value="">Select a value</option>
+                                {selectedVariant?.values
+                                  ?.filter((v) => !group.values.includes(v.id))
+                                  .map((val) => (
+                                    <option value={val.id} key={val.id}>
+                                      {val.name}
+                                    </option>
+                                  ))}
+                              </select>
+                            </div>
+                          )}
+
+                          {/* Price + Quantity Grid */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <div className="space-y-2">
+                              <label className="block text-sm font-semibold text-gray-700">
+                                Price *
+                              </label>
+                              <input
+                                type="number"
+                                value={group.price ? group.price : ""}
+                                onChange={(e) =>
+                                  handleVariantChange(
+                                    group.id,
+                                    "price",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                placeholder="0.00"
+                                step="0.01"
+                              />
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="block text-sm font-semibold text-gray-700">
+                                Quantity *
+                              </label>
+                              <input
+                                type="number"
+                                value={group.quantity || ""}
+                                onChange={(e) =>
+                                  handleVariantChange(
+                                    group.id,
+                                    "quantity",
+                                    e.target.value
+                                  )
+                                }
+                                className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                                placeholder="Qty"
+                              />
+                            </div>
+                          </div>
+
+                          {/* SKU */}
+                          <div className="space-y-2">
+                            <label className="block text-sm font-semibold text-gray-700">
+                              SKU *
+                            </label>
+
+                            <div className="flex gap-3">
                               <input
                                 type="text"
                                 value={group.sku}
@@ -694,10 +820,11 @@ export function ProductEditModal({
                                     e.target.value
                                   )
                                 }
-                                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200"
+                                className="flex-1 px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                                 placeholder="SKU-001"
                               />
                               <button
+                                type="button"
                                 onClick={() =>
                                   handleGenerateVariantSku(
                                     formData.sku,
@@ -705,48 +832,45 @@ export function ProductEditModal({
                                     group.id
                                   )
                                 }
-                                className="bg-blue-600 text-white px-4 py-0.5 rounded-lg font-medium shadow-sm hover:bg-blue-700 hover:shadow-md active:scale-95 transition-all duration-200"
+                                className="px-4 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 active:scale-95 transition-all duration-200"
                               >
-                                Generate SKU
+                                Generate
                               </button>
-                              <p className="text-xs text-gray-500 mt-2">
-                                Stock Keeping Unit - must be unique
-                              </p>
                             </div>
-                            <button
-                              onClick={() => removeVariant(group.id)}
-                              className="p-2 border border-red-800 text-red-600 hover:bg-red-100 rounded-lg transition-all duration-200 flex items-center justify-center"
-                            >
-                              <X className="w-4 h-4" />
-                            </button>
 
-                            {/* ui to preview select variants */}
-                            <div className="flex flex-wrap gap-2">
-                              {group.values.map((valueId) => {
-                                const value = variants
-                                  .flatMap((v) => v.values)
-                                  .find((val) => val.id === valueId);
-                                return (
-                                  <span
-                                    key={valueId}
-                                    className="inline-flex items-center gap-1 px-3 py-1 bg-green-100 text-green-800 text-sm rounded-full"
+                            <p className="text-xs text-gray-500">
+                              Stock Keeping Unit — must be unique
+                            </p>
+                          </div>
+
+                          {/* Selected Values Preview */}
+                          <div className="flex flex-wrap gap-2 pt-2">
+                            {group.values.map((valueId) => {
+                              const value = variants
+                                .flatMap((v) => v.values)
+                                .find((val) => val.id === valueId);
+
+                              return (
+                                <span
+                                  key={valueId}
+                                  className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 text-sm rounded-full border border-green-200"
+                                >
+                                  {value?.name}
+                                  <button
+                                    type="button"
+                                    onClick={() =>
+                                      removeSelectedVariantValue(
+                                        group.id,
+                                        valueId
+                                      )
+                                    }
+                                    className="text-green-500 hover:text-green-700 transition"
                                   >
-                                    {value?.name}
-                                    <button
-                                      onClick={() =>
-                                        removeSelectedVariantValue(
-                                          group.id,
-                                          valueId
-                                        )
-                                      }
-                                      className="text-green-600 hover:text-green-800 transition-colors"
-                                    >
-                                      <X className="w-3 h-3" />
-                                    </button>
-                                  </span>
-                                );
-                              })}
-                            </div>
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </span>
+                              );
+                            })}
                           </div>
                         </div>
                       );
@@ -762,20 +886,80 @@ export function ProductEditModal({
               onToggle={() => toggleSection("images")}
             >
               <div className="text-sm text-gray-600">
-                {product.images && product.images.length > 0 ? (
-                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                    {product.images.map((image) => (
+                {images && images.length > 0 ? (
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-6">
+                    {/* Upload Card */}
+                    <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-2xl p-8 text-center hover:border-blue-500 hover:bg-blue-50/50 transition-all duration-300 cursor-pointer group">
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        accept="image/*"
+                        multiple
+                        className="hidden"
+                        onChange={handleImageChange}
+                      />
+
+                      <Upload className="w-12 h-12 text-gray-400 group-hover:text-blue-500 transition mb-4" />
+
+                      <h3 className="text-base font-semibold text-gray-900 mb-2">
+                        Upload Images
+                      </h3>
+
+                      <p className="text-xs text-gray-500 mb-4">
+                        JPG, PNG, WebP — Max 10MB
+                      </p>
+
+                      <button
+                        type="button"
+                        onClick={handleImageChooseButton}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-medium hover:bg-blue-700 active:scale-95 transition-all duration-200"
+                      >
+                        Choose Files
+                      </button>
+                    </div>
+
+                    {/* Images */}
+                    {images.map((image) => (
                       <div
                         key={image.id}
-                        className="relative aspect-square rounded-lg overflow-hidden border-2 border-gray-200"
+                        onClick={() =>
+                          image.id && handlePrimaryImageSelection(image.id)
+                        }
+                        className={`
+              relative group aspect-square rounded-2xl overflow-hidden
+              bg-gray-100 cursor-pointer transition-all duration-300
+              border
+              ${
+                image.isPrimary
+                  ? "border-blue-600 ring-2 ring-blue-400"
+                  : "border-gray-200 hover:border-blue-400"
+              }
+            `}
                       >
                         <Image
-                          src={image.url}
+                          src={image.url || image.previewUrl}
                           alt={image.altText || product.name}
-                          className="w-full h-full object-cover"
+                          className="w-full h-full object-cover group-hover:scale-105 transition duration-300"
+                          width="1000"
+                          height="1000"
                         />
+
+                        {/* Hover Overlay */}
+                        <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
+                          <button
+                            type="button"
+                            onClick={() =>
+                              image.id && handleRemoveImage(image.id)
+                            }
+                            className="p-2 bg-white rounded-full text-red-600 hover:bg-red-50 shadow-md transition"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+
+                        {/* Primary Badge */}
                         {image.isPrimary && (
-                          <span className="absolute top-1 right-1 bg-blue-600 text-white text-xs px-2 py-0.5 rounded">
+                          <span className="absolute top-3 left-3 bg-blue-600 text-white text-xs px-2.5 py-1 rounded-full shadow-sm">
                             Primary
                           </span>
                         )}
@@ -783,7 +967,39 @@ export function ProductEditModal({
                     ))}
                   </div>
                 ) : (
-                  <p>No images for this product</p>
+                  <div className="flex flex-col items-center justify-center border-2 border-dashed border-gray-300 rounded-2xl p-12 text-center hover:border-blue-500 hover:bg-blue-50/50 transition-all duration-300 cursor-pointer group">
+                    <input
+                      type="file"
+                      ref={fileInputRef}
+                      accept="image/*"
+                      multiple
+                      className="hidden"
+                      onChange={handleImageChange}
+                    />
+
+                    <Upload className="w-14 h-14 text-gray-400 group-hover:text-blue-500 transition mb-5" />
+
+                    <h3 className="text-lg font-semibold text-gray-900 mb-3">
+                      Upload Product Images
+                    </h3>
+
+                    <p className="text-gray-500 mb-6 max-w-md">
+                      Drag and drop your product images here, or click to
+                      browse. High-quality images help increase sales.
+                    </p>
+
+                    <button
+                      type="button"
+                      onClick={handleImageChooseButton}
+                      className="px-6 py-2.5 bg-blue-600 text-white rounded-xl font-medium hover:bg-blue-700 active:scale-95 transition-all duration-200"
+                    >
+                      Choose Files
+                    </button>
+
+                    <p className="text-xs text-gray-500 mt-4">
+                      Recommended: 1200×1200px minimum
+                    </p>
+                  </div>
                 )}
               </div>
             </Section>
@@ -793,20 +1009,52 @@ export function ProductEditModal({
               expanded={expandedSections.categories}
               onToggle={() => toggleSection("categories")}
             >
-              <div className="text-sm text-gray-600">
-                {product.categories && product.categories.length > 0 ? (
-                  <div className="flex flex-wrap gap-2">
-                    {product.categories.map((category) => (
-                      <span
-                        key={category.id}
-                        className="px-3 py-1 bg-blue-100 text-blue-800 rounded-full"
-                      >
-                        {category.name}
-                      </span>
-                    ))}
+              <div className="space-y-4">
+                {/* Category Select */}
+                <div className="space-y-2">
+                  <select
+                    value=""
+                    onChange={(e) =>
+                      e.target.value && addCategory(e.target.value)
+                    }
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                  >
+                    <option value="">Select category to add</option>
+                    {categories
+                      .filter((cat) => !selectedCategories.includes(cat.id))
+                      .map((category) => (
+                        <option key={category.id} value={category.id}>
+                          {category.name}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+
+                {/* Selected Categories */}
+                {selectedCategories.length > 0 && (
+                  <div className="flex flex-wrap gap-2 pt-2">
+                    {selectedCategories.map((categoryId) => {
+                      const category = categories.find(
+                        (c) => c.id === categoryId
+                      );
+
+                      return (
+                        <span
+                          key={categoryId}
+                          className="inline-flex items-center gap-2 px-3 py-1.5 bg-green-50 text-green-700 text-sm rounded-full border border-green-200"
+                        >
+                          {category?.name}
+                          <button
+                            type="button"
+                            onClick={() => removeCategory(categoryId)}
+                            className="text-green-500 hover:text-green-700 transition"
+                          >
+                            <X className="w-3 h-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
                   </div>
-                ) : (
-                  <p>No categories assigned</p>
                 )}
               </div>
             </Section>
@@ -816,9 +1064,10 @@ export function ProductEditModal({
               expanded={expandedSections.dimensions}
               onToggle={() => toggleSection("dimensions")}
             >
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                {/* Weight */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Weight (kg)
                   </label>
                   <input
@@ -826,11 +1075,13 @@ export function ProductEditModal({
                     step="0.01"
                     value={formData.weight}
                     onChange={(e) => handleChange("weight", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+
+                {/* Length */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Length (cm)
                   </label>
                   <input
@@ -838,11 +1089,13 @@ export function ProductEditModal({
                     step="0.01"
                     value={formData.length}
                     onChange={(e) => handleChange("length", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+
+                {/* Width */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Width (cm)
                   </label>
                   <input
@@ -850,11 +1103,13 @@ export function ProductEditModal({
                     step="0.01"
                     value={formData.width}
                     onChange={(e) => handleChange("width", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+
+                {/* Height */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Height (cm)
                   </label>
                   <input
@@ -862,7 +1117,7 @@ export function ProductEditModal({
                     step="0.01"
                     value={formData.height}
                     onChange={(e) => handleChange("height", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                   />
                 </div>
               </div>
@@ -873,31 +1128,38 @@ export function ProductEditModal({
               expanded={expandedSections.seo}
               onToggle={() => toggleSection("seo")}
             >
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+              <div className="space-y-6">
+                {/* URL Handle */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     URL Handle
                   </label>
                   <input
                     type="text"
                     value={formData.urlHandle}
                     onChange={(e) => handleChange("urlHandle", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent font-mono"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl font-mono text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    placeholder="product-url-handle"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+
+                {/* Meta Title */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Meta Title
                   </label>
                   <input
                     type="text"
                     value={formData.metaTitle}
                     onChange={(e) => handleChange("metaTitle", e.target.value)}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
+                    placeholder="SEO optimized title"
                   />
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
+
+                {/* Meta Description */}
+                <div className="space-y-2">
+                  <label className="block text-sm font-medium text-gray-700">
                     Meta Description
                   </label>
                   <textarea
@@ -905,8 +1167,9 @@ export function ProductEditModal({
                     onChange={(e) =>
                       handleChange("metaDescription", e.target.value)
                     }
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    rows={4}
+                    className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition resize-none"
+                    placeholder="Write a compelling meta description for search engines..."
                   />
                 </div>
               </div>
@@ -914,18 +1177,19 @@ export function ProductEditModal({
           </div>
         </form>
 
-        <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200 bg-gray-50">
+        <div className="flex items-center justify-end gap-4 px-6 py-5 border-t border-gray-200 bg-gray-50/70 backdrop-blur-sm">
           <button
             type="button"
-            onClick={onClose}
-            className="px-6 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
+            onClick={handleCancel}
+            className="px-6 py-2.5 text-sm font-medium border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-100 active:scale-95 transition-all duration-200"
           >
             Cancel
           </button>
+
           <button
             onClick={handleSubmit}
             disabled={saving}
-            className="flex items-center gap-2 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="flex items-center gap-2 px-6 py-2.5 text-sm font-medium bg-blue-600 text-white rounded-xl shadow-sm hover:bg-blue-700 hover:shadow-md active:scale-95 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:active:scale-100"
           >
             <Save className="w-4 h-4" />
             {saving ? "Saving..." : "Save Changes"}
@@ -948,20 +1212,30 @@ function Section({
   children: React.ReactNode;
 }) {
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-gray-200 rounded-2xl overflow-hidden bg-white shadow-sm">
       <button
         type="button"
         onClick={onToggle}
-        className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors"
+        className="w-full flex items-center justify-between px-6 py-4 bg-gray-50/70 hover:bg-gray-100 transition-all duration-200 group"
       >
-        <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
-        {expanded ? (
-          <ChevronUp className="w-5 h-5" />
-        ) : (
-          <ChevronDown className="w-5 h-5" />
-        )}
+        <h3 className="text-base font-semibold text-gray-900 tracking-tight">
+          {title}
+        </h3>
+
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg group-hover:bg-white transition">
+          {expanded ? (
+            <ChevronUp className="w-5 h-5 text-gray-600" />
+          ) : (
+            <ChevronDown className="w-5 h-5 text-gray-600" />
+          )}
+        </div>
       </button>
-      {expanded && <div className="p-4">{children}</div>}
+
+      {expanded && (
+        <div className="px-6 py-6 border-t border-gray-100 bg-white">
+          {children}
+        </div>
+      )}
     </div>
   );
 }

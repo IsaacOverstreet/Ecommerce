@@ -48,6 +48,7 @@ export interface ProductImage {
   id: string;
   url: string;
   altText?: string;
+  publicId: string;
   order: number;
   isPrimary: boolean;
 }
