@@ -33,7 +33,7 @@ import { Variants } from "../../add-variants/utils/variantTypes";
 import { nanoid } from "nanoid";
 import { useConfirmation } from "@/hooks/useConfirmation";
 import SuccessCard from "@/components/shared-component/sucessCard";
-import Loading from "../loading";
+import { Loading } from "@/components/shared-component/loading";
 import { toast } from "react-toastify";
 import { handleUiError } from "@/lib/errorHandlers/uiErrors";
 import { publishEditedProduct } from "../service/publishEditedProducts";
@@ -390,7 +390,6 @@ export function ProductEditModal({
           console.log("🚀 Response:", res);
         } catch (err) {
           logger.error(err);
-          console.log("🚀 ~ onConfirm: ~ err:", err);
           setSaving(false);
         }
       },

@@ -51,19 +51,6 @@ interface ProductImage {
 
 type InputValue = string | number | boolean;
 
-// interface ProductCategory {
-//   id: string;
-//   name: string;
-// }
-
-// interface ProductVariant {
-//   id: string;
-//   name: string;
-//   value: string;
-//   price?: number;
-//   quantity?: number;
-// }
-
 interface ProductVariant {
   id: string;
   price: number;

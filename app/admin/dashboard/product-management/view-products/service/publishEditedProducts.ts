@@ -1,3 +1,4 @@
+import { appError } from "@/lib/errorHandlers/appError";
 import { handleUiError } from "@/lib/errorHandlers/uiErrors";
 
 import {
@@ -19,12 +20,12 @@ export async function publishEditedProduct(
   try {
     const validate = EditProductPayloadSchema.parse(payload);
     if (!validate) {
-      return "failed to validate";
+      throw appError(400, "failed to validate");
     }
 
     const productID = z.string().uuid().parse(prodID);
     if (!productID) {
-      return "failed to validate";
+      throw appError(400, "failed to validate");
     }
 
     const {

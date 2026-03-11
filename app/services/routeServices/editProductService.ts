@@ -191,7 +191,7 @@ export async function editProductService(
       }
       ///////////////////////////////////////////////////////////////////////////////
 
-      //////Edit variants//////////////////////////////
+      ///////////////Edit variants/////////////////////////////////////////////
       const existingVariantMap = new Map(
         existingVariants.map((v) => [v.id, v])
       );
@@ -281,6 +281,7 @@ export async function editProductService(
           });
         }
       }
+      ///////////////////////////////////////////////////////////////////////
 
       return updatedProduct;
     });
