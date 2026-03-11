@@ -2,7 +2,7 @@ import { z } from "zod";
 import { numberFromString } from "@/utils/preproccessed";
 
 //ProductSchema
-export const ProductSchema = z.object({
+export const EditProductFormSchema = z.object({
   name: z
     .string({ required_error: "Product name is required" })
     .min(1, { message: "Product name cannot be empty" })
@@ -67,58 +67,79 @@ export const ProductSchema = z.object({
     })
     .optional(),
 });
-export type ProductType = z.infer<typeof ProductSchema>;
+export type EditProductFormType = z.infer<typeof EditProductFormSchema>;
 
 //ProductImageSchema
-export const ProductImageSchema = z
+export const EditProductImageSchema = z
   .array(
-    z.object({
-      id: z.string().min(1).optional(),
+    z
+      .object({
+        id: z
+          .string({ required_error: "Image ID is required" })
+          .min(1, "Image ID cannot be empty"),
 
-      file: z.instanceof(File, {
-        message: "Invalid file",
-      }),
+        order: z
+          .number({ required_error: "Order is required" })
+          .int("Order must be an integer")
+          .min(0, "Order cannot be negative"),
 
-      previewUrl: z.string().url().optional(),
+        publicId: z.string().nullable(),
 
-      isPrimary: z.boolean({ message: "primary image not set" }),
-    })
+        url: z.string().nullable(),
+
+        file: z
+          .instanceof(File, { message: "File must be a valid File object" })
+          .nullable(),
+
+        previewUrl: z
+          .string({ required_error: "Preview URL is required" })
+          .nullable(),
+
+        isPrimary: z.boolean({ required_error: "isPrimary flag is required" }),
+
+        altText: z.string().nullable().optional(),
+      })
+      .strict()
   )
   .min(1, "At least one product image is required")
-  .refine((images) => images.some((img) => img.isPrimary), {
-    message: "One image must be set as primary",
-  });
-export type ProductImageType = z.infer<typeof ProductImageSchema>;
+  .refine(
+    (images) => images.length === 0 || images.some((img) => img.isPrimary),
+    {
+      message: "One image must be set as primary",
+    }
+  );
+export type EditProductImageType = z.infer<typeof EditProductImageSchema>;
 
 //ProductCategorySchema
-export const ProductCategorySchema = z.array(z.string()).optional();
-export type ProductCategoryType = z.infer<typeof ProductCategorySchema>;
+export const EditProductCategorySchema = z.array(z.string()).optional();
+export type EditProductCategoryType = z.infer<typeof EditProductCategorySchema>;
 
 //ProductVariantSchema
-export const ProductVariantSchema = z.array(
+export const EditProductVariantSchema = z.array(
   z.object({
     id: z.string().min(1, "Variant id is required"),
 
     price: numberFromString("Product variant price must be a valid number"),
+
     quantity: numberFromString("Quantity must be a valid number").optional(),
 
     sku: z.string().min(1, "SKU is required"),
 
-    variantTypeId: z.string().min(1, "Variant type is required"),
-
-    values: z
-      .array(z.string().min(1))
-      .min(1, "Variant must have at least one value"),
+    values: z.array(z.string()).min(1, "Variant must have at least one value"),
   })
 );
-export type ProductVariantType = z.infer<typeof ProductVariantSchema>;
+export type EditProductVariantType = z.infer<typeof EditProductVariantSchema>;
+
+//Deeted image publicId
+export const DeletedPublicIdSchema = z.array(z.string());
 
 //Payload Schema
-export const createProductPayloadSchema = z.object({
-  productData: ProductSchema,
-  images: ProductImageSchema,
-  selectedCategories: ProductCategorySchema,
-  productVariants: ProductVariantSchema,
+export const EditProductPayloadSchema = z.object({
+  formData: EditProductFormSchema,
+  images: EditProductImageSchema,
+  selectedCategories: EditProductCategorySchema,
+  editVariants: EditProductVariantSchema,
+  deletePublicId: DeletedPublicIdSchema,
 });
 
-export type CreateProductType = z.infer<typeof createProductPayloadSchema>;
+export type EditProductPayloadType = z.infer<typeof EditProductPayloadSchema>;

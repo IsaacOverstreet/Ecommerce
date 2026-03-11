@@ -31,7 +31,7 @@ import { fetchCategories } from "@/app/admin/dashboard/product-management/add-ca
 import { fetchVariants } from "@/app/admin/dashboard/product-management/add-variants/service/variantServices";
 import { nanoid } from "nanoid";
 
-import { publishProduct } from "../services/publish";
+import { publishProduct } from "../services/publishProduct";
 import { useConfirmation } from "@/hooks/useConfirmation";
 import { Loading } from "@/components/shared-component/loading";
 import SuccessCard from "@/components/shared-component/sucessCard";
@@ -180,8 +180,8 @@ export default function ProductForm({
     const selectedFiles: File[] = Array.from(e.target.files);
 
     // enforce max of 4 images
-    if (images.length + selectedFiles.length > 4) {
-      alert("You can only upload a maximum of 4 images");
+    if (images.length + selectedFiles.length > 8) {
+      alert("You can only upload a maximum of 8 images");
       return;
     }
 
@@ -348,6 +348,7 @@ export default function ProductForm({
             selectedCategories,
             productVariants,
           };
+          console.log("🚀 ~ onConfirm: ~ payload:", payload);
 
           const res = await publishProduct(payload);
           router.refresh();
@@ -708,14 +709,17 @@ export default function ProductForm({
                           Pricing Information
                         </h3>
                         <p className="text-blue-700 text-sm">
-                          Prices are stored in cents to avoid floating-point
-                          precision issues. For example, $19.99 is stored as
-                          1999 cents.
+                          Prices are stored as decimal values in the database,
+                          representing the exact amount in Naira. For example, a
+                          product costing ₦1999.50 is stored as 1999.50. This
+                          ensures accurate calculations and avoids rounding
+                          errors.
                         </p>
                       </div>
 
                       {productData.compareAtPrice &&
-                        productData.compareAtPrice > productData.price && (
+                        Number(productData.compareAtPrice) >
+                          Number(productData.price) && (
                           <div className="bg-green-50 border border-green-200 rounded-lg p-6">
                             <h3 className="text-lg font-semibold text-green-900 mb-2">
                               Sale Price Active

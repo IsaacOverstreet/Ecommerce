@@ -15,7 +15,6 @@ import { logger } from "@/utils/logger";
 import Image from "next/image";
 import { formatNumber } from "@/utils/formatPrice";
 
-
 interface allProductProp {
   productMeta: ProductMetaType;
 }
@@ -485,7 +484,6 @@ export function ProductList({ productMeta }: allProductProp) {
         <ProductInfoModal
           selectedProduct={selectedProduct}
           categories={categories}
-        
           onClose={() => setSelectedProduct(null)}
           onEdit={(product) => {
             setSelectedProduct(null);

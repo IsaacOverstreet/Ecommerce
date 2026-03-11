@@ -36,6 +36,9 @@ import SuccessCard from "@/components/shared-component/sucessCard";
 import Loading from "../loading";
 import { toast } from "react-toastify";
 import { handleUiError } from "@/lib/errorHandlers/uiErrors";
+import { publishEditedProduct } from "../service/publishEditedProducts";
+import { EditProductType } from "@/lib/validators/edit-product-schema";
+import { logger } from "@/utils/logger";
 
 interface ProductEditModalProps {
   product: Product;
@@ -53,13 +56,13 @@ export type ProductVariant = {
 };
 
 interface EditProductImage {
-  id?: string; // Existing images have DB id; new images may not yet
-  file?: File | null; // Only new images will have a File
+  id: string; // Existing images have DB id; new images may not yet
+  file: File | null; // Only new images will have a File
   previewUrl: string;
   isPrimary: boolean;
-  url?: string; // Existing image URL
+  url: string | null; // Existing image URL
   altText?: string;
-  publicId?: string | null; // Cloudinary public_id
+  publicId: string | null; // Cloudinary public_id
   order: number;
 }
 
@@ -90,7 +93,7 @@ export function ProductEditModal({
   });
 
   const [newTag, setNewTag] = useState("");
-  const [editvariants, setEditVariants] = useState<ProductVariant[]>(
+  const [editVariants, setEditVariants] = useState<ProductVariant[]>(
     product.variants.map((item) => ({
       ...item,
       price: item.price ?? 0,
@@ -98,19 +101,21 @@ export function ProductEditModal({
       values: item.values.map((v) => v.variantValueId),
     }))
   );
+
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const [images, setImages] = useState<EditProductImage[]>(
     product.images.map((img) => ({
       id: img.id,
       file: null,
       previewUrl: img.url, // preview for existing image
-      isPrimary: img.isPrimary ?? false,
+      isPrimary: img.isPrimary,
       url: img.url,
       altText: img.altText ?? "",
       publicId: img.publicId ?? null,
       order: img.order ?? 0,
     }))
   );
+  const [deletePublicId, setDeletePublicId] = useState<string[]>([]);
 
   const [categories, setCategories] = useState<Category[]>([]);
 
@@ -143,6 +148,7 @@ export function ProductEditModal({
       const data = await fetchVariants();
       setVariant(data);
     }
+
     loadVariant();
   }, []);
 
@@ -163,8 +169,8 @@ export function ProductEditModal({
     const selectedFiles: File[] = Array.from(e.target.files);
 
     // max of 4 images
-    if (images.length + selectedFiles.length > 4) {
-      alert("You can only upload a maximum of 4 images");
+    if (images.length + selectedFiles.length > 8) {
+      alert("You can only upload a maximum of 8 images");
       return;
     }
 
@@ -173,7 +179,7 @@ export function ProductEditModal({
       file,
       previewUrl: URL.createObjectURL(file),
       isPrimary: false,
-      url: "",
+      url: null,
       publicId: null,
       altText: "",
       order: images.length + index, // assign display order
@@ -186,8 +192,14 @@ export function ProductEditModal({
     fileInputRef.current?.click();
   };
 
-  const handleRemoveImage = (id: string) => {
-    setImages((prev) => prev.filter((img) => img.id != id));
+  const handleRemoveImage = (image: EditProductImage) => {
+    const id = image.publicId;
+    console.log("🚀 ~ handleRemoveImage ~ id:", id);
+    if (id !== null) {
+      setDeletePublicId((prev) => [...prev, id]);
+    }
+
+    setImages((prev) => prev.filter((img) => img.id != image.id));
   };
 
   const handlePrimaryImageSelection = (id: string) => {
@@ -281,6 +293,29 @@ export function ProductEditModal({
     setFormData((prev) => ({ ...prev, [field]: value }));
   }
 
+  const generateSlug = (name: string) => {
+    return name
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/(^-|-$)/g, "");
+  };
+
+  const handleNameChange = (name: string) => {
+    handleChange("name", name);
+    if (!formData.slug || formData.slug === generateSlug(formData.name)) {
+      handleChange("slug", generateSlug(name));
+    }
+    if (
+      !formData.urlHandle ||
+      formData.urlHandle === formData.name.toLowerCase().replace(/\s+/g, "-")
+    ) {
+      handleChange("urlHandle", generateSlug(name));
+    }
+    if (!formData.metaTitle || formData.metaTitle === formData.name) {
+      handleChange("metaTitle", name);
+    }
+  };
+
   const addTag = () => {
     const trimmed = newTag.trim();
     if (!trimmed) return;
@@ -330,34 +365,38 @@ export function ProductEditModal({
 
       onConfirm: async () => {
         try {
+          const productID = product.id;
+          console.log("🚀 ~ onConfirm: ~ productID:", productID);
           setSaving(true);
           setError(null); // reset previous error
           console.log("🚀 ~ onConfirm: ~ payload:");
+
           const payload = {
-            productData,
+            formData,
             images,
             selectedCategories,
-            productVariants,
+            editVariants,
+            deletePublicId,
           };
+          console.log("🚀 ~ onConfirm: ~ payload:", payload);
 
-          const res = await publishProduct(payload);
+          const res = await publishEditedProduct(payload, productID);
           setSaving(false);
           setShowSuccessCard(true);
           setSuccessMessage(res.message);
           onSave(); /////LOOK into here too
+          cleanupBlobs();
 
           console.log("🚀 Response:", res);
-        } catch (err: unknown) {
+        } catch (err) {
+          logger.error(err);
           console.log("🚀 ~ onConfirm: ~ err:", err);
-          handleUiError(err);
-          setError(err as string); /////LOOK INTO THIS PART
           setSaving(false);
-        } finally {
-          cleanupBlobs();
         }
       },
     });
   }
+
   const handleCancel = () => {
     confirm({
       message: "Are you sure you want to cancel? Unsaved changes will be lost.",
@@ -428,7 +467,7 @@ export function ProductEditModal({
                   <input
                     type="text"
                     value={formData.name}
-                    onChange={(e) => handleChange("name", e.target.value)}
+                    onChange={(e) => handleNameChange(e.target.value)}
                     className="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition"
                     required
                   />
@@ -466,6 +505,7 @@ export function ProductEditModal({
                     Slug <span className="text-red-500">*</span>
                   </label>
                   <input
+                    disabled={!formData.name}
                     type="text"
                     value={formData.slug}
                     onChange={(e) => handleChange("slug", e.target.value)}
@@ -588,6 +628,35 @@ export function ProductEditModal({
                     />
                   </div>
                 </div>
+
+                {formData.compareAtPrice &&
+                  Number(formData.compareAtPrice) > Number(formData.price) && (
+                    <div className="bg-green-50 border border-green-200 rounded-lg p-6">
+                      <h3 className="text-lg font-semibold text-green-900 mb-2">
+                        Sale Price Active
+                      </h3>
+                      <p className="text-green-700 text-sm mb-3">
+                        Customers will see the compare at price crossed out with
+                        your sale price highlighted.
+                      </p>
+                      <div className="flex flex-wrap items-center gap-2 text-sm">
+                        <span className="line-through text-gray-500">
+                          #{formData.compareAtPrice}
+                        </span>
+                        <span className="font-semibold text-green-600">
+                          #{formData.price}
+                        </span>
+                        <span className="text-xs bg-red-100 text-red-800 px-2 py-1 rounded-full">
+                          {Math.round(
+                            ((formData.compareAtPrice - (formData.price || 0)) /
+                              formData.compareAtPrice) *
+                              100
+                          )}
+                          % OFF
+                        </span>
+                      </div>
+                    </div>
+                  )}
               </div>
             </Section>
 
@@ -662,7 +731,7 @@ export function ProductEditModal({
               onToggle={() => toggleSection("variants")}
             >
               <div>
-                {editvariants.length === 0 ? (
+                {editVariants.length === 0 ? (
                   <div className="text-center py-14 bg-gray-50 rounded-xl border-2 border-dashed border-gray-300">
                     <Tag className="w-12 h-12 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -691,7 +760,7 @@ export function ProductEditModal({
                       </button>
                     </div>
 
-                    {editvariants.map((group) => {
+                    {editVariants.map((group) => {
                       const selectedVariant = variantMap[group.variantTypeId];
 
                       return (
@@ -948,9 +1017,7 @@ export function ProductEditModal({
                         <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 transition flex items-center justify-center">
                           <button
                             type="button"
-                            onClick={() =>
-                              image.id && handleRemoveImage(image.id)
-                            }
+                            onClick={() => image && handleRemoveImage(image)}
                             className="p-2 bg-white rounded-full text-red-600 hover:bg-red-50 shadow-md transition"
                           >
                             <X className="w-4 h-4" />

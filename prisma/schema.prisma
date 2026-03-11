@@ -90,8 +90,8 @@ model Address {
 
 model Product {
   id String @id @default(uuid())
-  price Decimal @default(0.00)
-  compareAtPrice Decimal?
+  price Decimal @default(0.00) @db.Decimal(10, 2)
+  compareAtPrice Decimal? @db.Decimal(10, 2)
   name          String
   slug          String     @unique
   description String?
@@ -116,7 +116,7 @@ model Product {
   images        ProductImage[]
   categories    ProductCategory[]
   variants      ProductVariant[]
-  // variantsGroup    ProductVariantGroup[]
+ 
   reviews       Review[]
   cartItems     CartItem[]
   orderItems    OrderItem[]
@@ -133,7 +133,7 @@ model ProductImage {
   id        String   @id @default(uuid())
   product   Product  @relation(fields: [productId], references: [id])
   productId String
-  publicId String?
+  publicId String
   url       String   // Cloud URL or path
   altText   String?
   order     Int      @default(0) // For sorting
@@ -159,7 +159,7 @@ model ProductVariant {
   productId String
 
   sku       String    @unique
-  price     Decimal?
+  price     Decimal? @db.Decimal(10, 2)
   quantity  Int       @default(0)
   isAvailableForPurchase Boolean @default(true)
   createdAt DateTime   @default(now())
@@ -183,39 +183,6 @@ model ProductVariantValue {
 }
 
 
-// model ProductVariantGroup {
-//   id         String           @id @default(uuid())
-//   product    Product          @relation(fields: [productId], references: [id])
-//   productId  String
-//   variants   ProductVariant[] // Red + Large + Cotton
-//   sku        String?          @unique
-//   quantity   Int              @default(0)
-//   price      Decimal?
-//   isAvailableForPurchase Boolean @default(true)
-//   createdAt  DateTime         @default(now())
-//   updatedAt  DateTime         @updatedAt
-// }
-
-
-// model ProductVariant {
-//   id          String   @id @default(uuid())
-//   product     Product  @relation(fields: [productId], references: [id])
-//   productId   String
-//   variantValue         VariantValue       @relation(fields: [variantValueId], references: [id])
-//   variantValueId       String
-//   productVariantGroup  ProductVariantGroup @relation(fields: [groupId], references: [id])
-//   groupId              String  
-//   price Decimal? 
-//   sku String? @unique
-//   barcode String?
-//   quantity    Int      @default(0)
-//   createdAt   DateTime @default(now())
-//   updatedAt   DateTime @updatedAt
-//   cartItems   CartItem[]
-//   orderItems    OrderItem[]
-//   inventoryLog InventoryLog[]
-  
-// }
 
 model Category {
   id          String     @id @default(uuid())

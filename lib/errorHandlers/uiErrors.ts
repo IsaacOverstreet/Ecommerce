@@ -6,12 +6,14 @@ import { logger } from "@/utils/logger";
 
 export function handleUiError(error: unknown): string {
   if (error instanceof ZodError) {
+    console.log("zod", error);
     const firstError = error.issues[0];
     const message = firstError?.message || "Validation failed";
     console.log(message);
     toast.error(message);
     return message;
   }
+  console.log("zodbscnns", error);
 
   if (axios.isAxiosError(error)) {
     console.log("🚀 ~ handleUiError ~ error:", error);
