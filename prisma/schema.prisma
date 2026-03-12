@@ -15,11 +15,6 @@ datasource db {
 
 
 
-enum Role {
-  CUSTOMER
-  ADMIN
-  EDITOR
-}
 
 enum OrderStatus {
   PENDING
@@ -62,7 +57,8 @@ model User{
   lastLogin    DateTime?
   emailVerified Boolean    @default(false)
   active        Boolean    @default(true)
-  role          Role       @default(CUSTOMER)
+  otp           UserOTP?
+
   deletedAt DateTime?
   order Order[]
   address Address[]
@@ -70,6 +66,38 @@ model User{
   cart          Cart?
   userDiscounts  UserDiscount[]
   pageview PageView[]
+}
+
+model UserOTP {
+  id        Int      @id @default(autoincrement())
+  userId    String   @unique
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  User      User     @relation(fields: [userId], references: [id])
+}
+
+model Admin {
+  id           String     @id @default(uuid())
+  email        String     @unique
+  passwordHash String?
+  name         String?
+  image        String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  lastLogin    DateTime?
+  emailVerified Boolean   @default(false)
+  active        Boolean   @default(true)
+  otp           AdminOTP?
+}
+
+model AdminOTP {
+  id        Int      @id @default(autoincrement())
+  adminId   String   @unique
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  Admin     Admin    @relation(fields: [adminId], references: [id])
 }
 
 model Address {
