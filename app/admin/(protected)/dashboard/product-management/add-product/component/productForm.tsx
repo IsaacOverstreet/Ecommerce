@@ -27,8 +27,8 @@ import Image from "next/image";
 import { Category } from "@/app/types/categoryTypes";
 import { Variants } from "@/app/types/variantTypes";
 import { useQuery } from "@tanstack/react-query";
-import { fetchCategories } from "@/app/admin/dashboard/product-management/add-category/service/categoryServices";
-import { fetchVariants } from "@/app/admin/dashboard/product-management/add-variants/service/variantServices";
+import { fetchCategories } from "@/app/admin/(protected)/dashboard/product-management/add-category/service/categoryServices";
+import { fetchVariants } from "@/app/admin/(protected)/dashboard/product-management/add-variants/service/variantServices";
 import { nanoid } from "nanoid";
 
 import { publishProduct } from "../services/publishProduct";

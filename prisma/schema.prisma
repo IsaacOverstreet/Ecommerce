@@ -80,7 +80,7 @@ model UserOTP {
 model Admin {
   id           String     @id @default(uuid())
   email        String     @unique
-  passwordHash String?
+  passwordHash String
   name         String?
   image        String?
   createdAt    DateTime   @default(now())
@@ -88,7 +88,7 @@ model Admin {
   lastLogin    DateTime?
   emailVerified Boolean   @default(false)
   active        Boolean   @default(true)
-  otp           AdminOTP?
+  otp           AdminOTP[]
 }
 
 model AdminOTP {
@@ -97,7 +97,10 @@ model AdminOTP {
   code      String
   expiresAt DateTime
   createdAt DateTime @default(now())
-  Admin     Admin    @relation(fields: [adminId], references: [id])
+  used Boolean  @default(false)
+  Admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  @@index([adminId])
+  @@index([expiresAt])
 }
 
 model Address {

@@ -1,5 +1,5 @@
 import axios from "axios";
-import { Category } from "../../../../../types/categoryTypes";
+import { Category } from "../../../../../../types/categoryTypes";
 
 export async function fetchCategories(): Promise<Category[]> {
   try {

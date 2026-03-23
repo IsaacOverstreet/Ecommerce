@@ -1,9 +1,10 @@
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/admin-component/app-sidebar";
 import { AdminNavbar } from "@/components/admin-component/admin-navbar";
-import "../globals.css";
+import "@/app/globals.css";
 import { ToastContainer } from "react-toastify";
-export default function AdminLayout({
+
+export default function DashboardLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;

@@ -1,29 +1,25 @@
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
-import NextAuth from "next-auth";
+import "next-auth";
 
 declare module "next-auth" {
-  interface Session {
-    user: {
-      role?: "ADMIN" | "CUSTOMER";
-      name?: string | null;
-      email?: string | null;
-      image?: string | null;
-      isVerified?: boolean;
-    };
+  interface User {
+    id: string;
   }
 
-  interface User {
-    role?: "ADMIN" | "CUSTOMER";
-    isVerified?: boolean;
+  interface Session {
+    user: {
+      id: string;
+      email: string;
+      name?: string | null;
+      role: string;
+      isAdmin?: boolean;
+    };
   }
 }
 
 declare module "next-auth/jwt" {
   interface JWT {
-    name?: string | null;
-    email?: string | null;
-    picture?: string | null;
-    role?: "ADMIN" | "CUSTOMER";
-    isVerified?: boolean;
+    id: string;
+    role: string;
+    isAdmin?: boolean;
   }
 }
