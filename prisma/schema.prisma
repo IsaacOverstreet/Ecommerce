@@ -1,20 +1,365 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
-
 }
 
 datasource db {
   provider = "postgresql"
 }
 
+model User {
+  id            String         @id @default(uuid())
+  email         String         @unique
+  passwordHash  String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  emailVerified Boolean        @default(false)
+  active        Boolean        @default(true)
+  deletedAt     DateTime?
+  name          String?
+  image         String?
+  lastLogin     DateTime?
+  address       Address[]
+  cart          Cart?
+  order         Order[]
+  pageview      PageView[]
+  reviews       Review[]
+  userDiscounts UserDiscount[]
+  otp           UserOTP?
+}
 
+model UserOTP {
+  id        Int      @id @default(autoincrement())
+  userId    String   @unique
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  User      User     @relation(fields: [userId], references: [id])
+}
 
+model Admin {
+  id            String    @id @default(uuid())
+  email         String    @unique
+  passwordHash  String
+  name          String?
+  image         String?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+  lastLogin     DateTime?
+  emailVerified Boolean   @default(false)
+  active        Boolean   @default(true)
+  otp           AdminOTP?
+}
+
+model AdminOTP {
+  id        Int      @id @default(autoincrement())
+  adminId   String   @unique
+  code      String
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  used      Boolean  @default(false)
+  Admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
+
+  @@index([adminId])
+  @@index([expiresAt])
+}
+
+model Address {
+  id         String   @id @default(uuid())
+  userId     String
+  street     String
+  city       String
+  state      String
+  postalCode String
+  country    String
+  isDefault  Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  user       User     @relation(fields: [userId], references: [id])
+  orders     Order[]
+}
+
+model Product {
+  id                     String            @id @default(uuid())
+  name                   String
+  slug                   String            @unique
+  description            String?
+  quantity               Int               @default(0)
+  trackQuantity          Boolean           @default(true)
+  isAvailableForPurchase Boolean           @default(true)
+  createdAt              DateTime          @default(now())
+  updatedAt              DateTime          @updatedAt
+  deletedAt              DateTime?         @map("deleted_at")
+  active                 Boolean           @default(true)
+  compareAtPrice         Decimal?          @db.Decimal(10, 2)
+  height                 Float?
+  length                 Float?
+  metaDescription        String?
+  metaTitle              String?
+  price                  Decimal           @default(0.00) @db.Decimal(10, 2)
+  sku                    String            @unique
+  tag                    String[]
+  urlHandle              String?
+  weight                 Float?
+  width                  Float?
+  cartItems              CartItem[]
+  inventoryLogs          InventoryLog[]
+  orderItems             OrderItem[]
+  pageview               PageView[]
+  categories             ProductCategory[]
+  discounts              ProductDiscount[]
+  images                 ProductImage[]
+  variants               ProductVariant[]
+  reviews                Review[]
+  variantType            VariantType[]     @relation("ProductToVariantType")
+
+  @@index([isAvailableForPurchase])
+  @@index([createdAt])
+  @@index([isAvailableForPurchase, createdAt])
+}
+
+model ProductImage {
+  id        String  @id @default(uuid())
+  productId String
+  url       String
+  altText   String?
+  order     Int     @default(0)
+  isPrimary Boolean @default(false)
+  publicId  String
+  product   Product @relation(fields: [productId], references: [id])
+
+  @@index([productId, isPrimary])
+}
+
+model ProductCategory {
+  id         String   @id @default(uuid())
+  productId  String
+  categoryId String
+  createdAt  DateTime @default(now())
+  category   Category @relation(fields: [categoryId], references: [id])
+  product    Product  @relation(fields: [productId], references: [id])
+
+  @@unique([productId, categoryId])
+}
+
+model ProductVariant {
+  id                     String                @id @default(uuid())
+  productId              String
+  price                  Decimal?              @db.Decimal(10, 2)
+  sku                    String                @unique
+  quantity               Int                   @default(0)
+  createdAt              DateTime              @default(now())
+  updatedAt              DateTime              @updatedAt
+  isAvailableForPurchase Boolean               @default(true)
+  cartItems              CartItem[]
+  inventoryLogs          InventoryLog[]
+  orderItems             OrderItem[]
+  product                Product               @relation(fields: [productId], references: [id])
+  values                 ProductVariantValue[]
+}
+
+model ProductVariantValue {
+  id             String         @id @default(uuid())
+  variantId      String
+  variantValueId String
+  productVariant ProductVariant @relation(fields: [variantId], references: [id])
+  variantValue   VariantValue   @relation(fields: [variantValueId], references: [id])
+}
+
+model Category {
+  id          String            @id @default(uuid())
+  name        String
+  slug        String            @unique
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  products    ProductCategory[]
+  variantType VariantType[]     @relation("CategoryVariantTypes")
+}
+
+model VariantType {
+  id          String         @id @default(uuid())
+  name        String         @unique
+  description String?
+  isColor     Boolean        @default(false)
+  createdAt   DateTime       @default(now())
+  updatedAt   DateTime       @updatedAt
+  values      VariantValue[]
+  categories  Category[]     @relation("CategoryVariantTypes")
+  products    Product[]      @relation("ProductToVariantType")
+}
+
+model VariantValue {
+  id                  String                @id @default(uuid())
+  name                String
+  hexCode             String?
+  variantTypeId       String
+  productVariantValue ProductVariantValue[]
+  variantType         VariantType           @relation(fields: [variantTypeId], references: [id])
+}
+
+model Review {
+  id        String   @id @default(uuid())
+  productId String
+  userId    String
+  rating    Int
+  content   String?
+  approved  Boolean  @default(false)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  product   Product  @relation(fields: [productId], references: [id])
+  user      User     @relation(fields: [userId], references: [id])
+}
+
+model Cart {
+  id        String     @id @default(uuid())
+  userId    String     @unique
+  createdAt DateTime   @default(now())
+  updatedAt DateTime   @updatedAt
+  expiresAt DateTime?
+  user      User       @relation(fields: [userId], references: [id])
+  items     CartItem[]
+}
+
+model CartItem {
+  id        String          @id @default(uuid())
+  cartId    String
+  productId String
+  quantity  Int             @default(1)
+  variantId String?
+  createdAt DateTime        @default(now())
+  updatedAt DateTime        @updatedAt
+  cart      Cart            @relation(fields: [cartId], references: [id])
+  product   Product         @relation(fields: [productId], references: [id])
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+
+  @@unique([cartId, productId, variantId])
+}
+
+model Order {
+  id                String      @id @default(uuid())
+  orderNumber       String      @unique
+  userId            String
+  addressId         String?
+  status            OrderStatus @default(PENDING)
+  discountId        String?
+  total             Decimal
+  subtotal          Decimal
+  tax               Decimal?
+  shipping          Decimal?
+  discountAmount    Decimal?
+  shippingMethod    String?
+  trackingNumber    String?
+  estimatedDelivery DateTime?
+  deliveredAt       DateTime?
+  currency          Currency    @default(NGN)
+  createdAt         DateTime    @default(now())
+  updatedAt         DateTime    @updatedAt
+  address           Address?    @relation(fields: [addressId], references: [id])
+  discount          Discount?   @relation(fields: [discountId], references: [id])
+  user              User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  items             OrderItem[]
+  payments          Payment[]
+
+  @@index([userId])
+  @@index([status])
+}
+
+model OrderItem {
+  id        String          @id @default(uuid())
+  orderId   String
+  productId String
+  variantId String?
+  price     Decimal
+  quantity  Int
+  total     Decimal
+  createdAt DateTime        @default(now())
+  order     Order           @relation(fields: [orderId], references: [id])
+  product   Product         @relation(fields: [productId], references: [id])
+  variant   ProductVariant? @relation(fields: [variantId], references: [id])
+}
+
+model Payment {
+  id            String        @id @default(uuid())
+  orderId       String
+  amount        Decimal
+  method        PaymentMethod
+  status        PaymentStatus @default(PENDING)
+  transactionId String?
+  currency      Currency      @default(NGN)
+  details       Json?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  order         Order         @relation(fields: [orderId], references: [id])
+}
+
+model Discount {
+  id            String            @id @default(uuid())
+  code          String            @unique
+  type          String
+  value         Decimal
+  minAmount     Decimal?
+  startDate     DateTime
+  endDate       DateTime?
+  active        Boolean           @default(true)
+  singleUse     Boolean           @default(false)
+  usedCount     Int               @default(0)
+  maxUses       Int?
+  createdAt     DateTime          @default(now())
+  updatedAt     DateTime          @updatedAt
+  orders        Order[]
+  products      ProductDiscount[]
+  userDiscounts UserDiscount[]
+}
+
+model ProductDiscount {
+  id         String    @id @default(uuid())
+  productId  String
+  discountId String
+  startDate  DateTime
+  endDate    DateTime?
+  active     Boolean   @default(true)
+  discount   Discount  @relation(fields: [discountId], references: [id])
+  product    Product   @relation(fields: [productId], references: [id])
+
+  @@unique([productId, discountId])
+}
+
+model UserDiscount {
+  id         String   @id @default(uuid())
+  userId     String
+  discountId String
+  usedAt     DateTime @default(now())
+  discount   Discount @relation(fields: [discountId], references: [id])
+  user       User     @relation(fields: [userId], references: [id])
+
+  @@unique([userId, discountId])
+}
+
+model InventoryLog {
+  id          String          @id @default(uuid())
+  productId   String
+  variantId   String?
+  change      Int
+  previousQty Int
+  newQty      Int
+  reason      String?
+  referenceId String?
+  performedBy String?
+  createdAt   DateTime        @default(now())
+  product     Product         @relation(fields: [productId], references: [id])
+  variant     ProductVariant? @relation(fields: [variantId], references: [id])
+}
+
+model PageView {
+  id        String   @id @default(uuid())
+  path      String
+  productId String?
+  userId    String?
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  product   Product? @relation(fields: [productId], references: [id])
+  user      User?    @relation(fields: [userId], references: [id])
+}
 
 enum OrderStatus {
   PENDING
@@ -24,6 +369,7 @@ enum OrderStatus {
   CANCELLED
   REFUNDED
 }
+
 enum Currency {
   USD
   EUR
@@ -43,381 +389,4 @@ enum PaymentStatus {
 enum PaymentMethod {
   CREDIT_CARD
   BANK_TRANSFER
-}
-
-
-model User{
-  id String @id @default(uuid())
-  email String @unique
-  passwordHash  String?
-  name     String?
-  image String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  lastLogin    DateTime?
-  emailVerified Boolean    @default(false)
-  active        Boolean    @default(true)
-  otp           UserOTP?
-
-  deletedAt DateTime?
-  order Order[]
-  address Address[]
-  reviews       Review[]
-  cart          Cart?
-  userDiscounts  UserDiscount[]
-  pageview PageView[]
-}
-
-model UserOTP {
-  id        Int      @id @default(autoincrement())
-  userId    String   @unique
-  code      String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  User      User     @relation(fields: [userId], references: [id])
-}
-
-model Admin {
-  id           String     @id @default(uuid())
-  email        String     @unique
-  passwordHash String
-  name         String?
-  image        String?
-  createdAt    DateTime   @default(now())
-  updatedAt    DateTime   @updatedAt
-  lastLogin    DateTime?
-  emailVerified Boolean   @default(false)
-  active        Boolean   @default(true)
-  otp           AdminOTP[]
-}
-
-model AdminOTP {
-  id        Int      @id @default(autoincrement())
-  adminId   String   @unique
-  code      String
-  expiresAt DateTime
-  createdAt DateTime @default(now())
-  used Boolean  @default(false)
-  Admin     Admin    @relation(fields: [adminId], references: [id], onDelete: Cascade)
-  @@index([adminId])
-  @@index([expiresAt])
-}
-
-model Address {
-  id          String   @id @default(uuid())
-  user        User     @relation(fields: [userId], references: [id])
-  userId      String
-  street      String
-  city        String
-  state       String
-  postalCode  String
-  country     String
-  isDefault   Boolean  @default(false)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
-  
-  orders      Order[]
-}
-
-model Product {
-  id String @id @default(uuid())
-  price Decimal @default(0.00) @db.Decimal(10, 2)
-  compareAtPrice Decimal? @db.Decimal(10, 2)
-  name          String
-  slug          String     @unique
-  description String?
-  quantity      Int        @default(0)
-  trackQuantity Boolean    @default(true)
-  isAvailableForPurchase Boolean @default(true)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  deletedAt DateTime? @map("deleted_at")
-  active Boolean @default(true)
-  sku         String   @unique
-  weight      Float?   // in kg
-  length      Float?   // in cm
-  width       Float?   // in cm
-  height      Float?   // in cm
-  tag String[]
-  urlHandle String?
-  metaTitle String?
-  metaDescription String?
-  discounts   ProductDiscount[]
-  variantType VariantType[]
-  images        ProductImage[]
-  categories    ProductCategory[]
-  variants      ProductVariant[]
- 
-  reviews       Review[]
-  cartItems     CartItem[]
-  orderItems    OrderItem[]
-  inventoryLogs InventoryLog[]
-  pageview PageView[]
-  @@index([isAvailableForPurchase])
-   @@index([createdAt])
-   @@index([isAvailableForPurchase, createdAt])
-
-}
-
-
-model ProductImage {
-  id        String   @id @default(uuid())
-  product   Product  @relation(fields: [productId], references: [id])
-  productId String
-  publicId String
-  url       String   // Cloud URL or path
-  altText   String?
-  order     Int      @default(0) // For sorting
-  isPrimary Boolean  @default(false)
-
-  @@index([productId, isPrimary])
-}
-
-model ProductCategory {
-  id         String   @id @default(uuid())
-  product    Product  @relation(fields: [productId], references: [id])
-  productId  String
-  category   Category @relation(fields: [categoryId], references: [id])
-  categoryId String
-  createdAt  DateTime @default(now())
-
-  @@unique([productId, categoryId]) // Ensure no duplicates
-}
-
-model ProductVariant {
-  id        String    @id @default(uuid())
-  product   Product   @relation(fields: [productId], references: [id])
-  productId String
-
-  sku       String    @unique
-  price     Decimal? @db.Decimal(10, 2)
-  quantity  Int       @default(0)
-  isAvailableForPurchase Boolean @default(true)
-  createdAt DateTime   @default(now())
-  updatedAt DateTime   @updatedAt
-
-  // Relationships
-  values    ProductVariantValue[]
-  cartItems CartItem[]
-  orderItems OrderItem[]
-  inventoryLogs InventoryLog[]
-}
-
-
-model ProductVariantValue {
-  id               String        @id @default(uuid())
-  productVariant   ProductVariant @relation(fields: [variantId], references: [id])
-  variantId        String
-
-  variantValue     VariantValue  @relation(fields: [variantValueId], references: [id])
-  variantValueId   String
-}
-
-
-
-model Category {
-  id          String     @id @default(uuid())
-  name        String
-  slug        String     @unique
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  products    ProductCategory[]
-  variantType VariantType[] @relation("CategoryVariantTypes")
-
-}
-
-
-model VariantType {
-  id          String     @id @default(uuid())
-  name        String     @unique  // "Size", "Color"
-  description String? 
-  values    VariantValue[]   
-  isColor     Boolean    @default(false)   
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  categories  Category[] @relation("CategoryVariantTypes")// Categories this variant applies to
-  products    Product[]  // Products using this variant
-  
- 
-}
-
-model VariantValue {
-  id            String           @id @default(uuid())
-  name          String                            // e.g. "Red", "Large"
-  hexCode       String?                           // Optional if not color variants
-  variantType   VariantType       @relation(fields: [variantTypeId], references: [id])
-  variantTypeId String
-  productVariantValue ProductVariantValue[]
-}
-
-
-
-model Review {
-  id        String   @id @default(uuid())
-  product   Product  @relation(fields: [productId], references: [id])
-  productId String
-  user      User     @relation(fields: [userId], references: [id])
-  userId    String
-  rating    Int      
-  content   String?
-  approved  Boolean  @default(false)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Cart {
-  id        String    @id @default(uuid())
-  user      User      @relation(fields: [userId], references: [id])
-  userId    String    @unique
-  items     CartItem[]
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
-  expiresAt DateTime? // Optional expiration timestamp for abandoned cart handling
-}
-
-model CartItem {
-  id        String   @id @default(uuid())
-  cart      Cart     @relation(fields: [cartId], references: [id])
-  cartId    String
-  product   Product  @relation(fields: [productId], references: [id])
-  productId String
-  quantity  Int      @default(1)
-  variant   ProductVariant? @relation(fields: [variantId], references: [id])
-  variantId String?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  
-  @@unique([cartId, productId, variantId])
-}
-
-
-
-model Order{
-  id String @id @default(uuid())
-  orderNumber    String      @unique
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-  userId         String
-  address        Address?    @relation(fields: [addressId], references: [id])
-  addressId      String?
-  status         OrderStatus @default(PENDING)
-  discountId     String?     // foreign key can be nullable
-  discount       Discount?   @relation(fields: [discountId], references: [id])
-  total          Decimal
-  subtotal       Decimal
-  tax            Decimal?
-  shipping       Decimal?
-  discountAmount     Decimal?
-  shippingMethod String?
-  trackingNumber String?
-  estimatedDelivery  DateTime?
-  deliveredAt        DateTime?
-  currency Currency @default(NGN)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-  items          OrderItem[]
-  payments       Payment[]
-  @@index([userId])
-  @@index([status])
-
-}
-
-model OrderItem {
-  id        String         @id @default(uuid())
-  order     Order          @relation(fields: [orderId], references: [id])
-  orderId   String
-  product   Product        @relation(fields: [productId], references: [id])
-  productId String
-  variant   ProductVariant? @relation(fields: [variantId], references: [id])
-  variantId String?
-  price     Decimal
-  quantity  Int
-  total     Decimal
-  createdAt DateTime       @default(now())
-}
-
-
-model Payment {
-  id            String         @id @default(uuid())
-  order         Order          @relation(fields: [orderId], references: [id])
-  orderId       String
-  amount        Decimal
-  method        PaymentMethod
-  status        PaymentStatus  @default(PENDING)
-  transactionId String?
-  currency Currency @default(NGN)
-  details       Json?
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  
-}
-model Discount {
-  id          String     @id @default(uuid())
-  code        String     @unique
-  type        String     // "percentage" or "fixed"
-  value       Decimal
-  minAmount   Decimal?
-  startDate   DateTime
-  endDate     DateTime?
-  active      Boolean    @default(true)
-  singleUse   Boolean    @default(false)
-  usedCount   Int        @default(0)
-  maxUses     Int?
-  createdAt   DateTime   @default(now())
-  updatedAt   DateTime   @updatedAt
-  products  ProductDiscount[]
-  orders      Order[]
-  userDiscounts  UserDiscount[]
-}
-
-model ProductDiscount {
-  id         String    @id @default(uuid())
-  product    Product   @relation(fields: [productId], references: [id])
-  productId  String
-  discount   Discount  @relation(fields: [discountId], references: [id])
-  discountId String
-  startDate  DateTime
-  endDate    DateTime?
-  active     Boolean   @default(true)
-
-  @@unique([productId, discountId])
-}
-
-model UserDiscount {
-  id         String   @id @default(uuid())
-  user       User     @relation(fields: [userId], references: [id])
-  userId     String
-  discount   Discount @relation(fields: [discountId], references: [id])
-  discountId String
-  usedAt     DateTime @default(now())
-
-  @@unique([userId, discountId]) // Prevents user from reusing same code
-}
-
-// For inventory management
-model InventoryLog {
-  id          String     @id @default(uuid())
-  product     Product    @relation(fields: [productId], references: [id])
-  productId   String
-  variant     ProductVariant? @relation(fields: [variantId], references: [id])
-  variantId   String?
-  change      Int       // Positive for addition, negative for deduction
-  previousQty Int
-  newQty      Int
-  reason      String?   // "purchase", "return", "adjustment", etc.
-  referenceId String?   // orderId or other reference
-  performedBy String?  
-  createdAt   DateTime  @default(now())
-}
-
-// For analytics and reporting
-model PageView {
-  id        String   @id @default(uuid())
-  path      String
-  product   Product? @relation(fields: [productId], references: [id])
-  productId String?
-  user      User?    @relation(fields: [userId], references: [id])
-  userId    String?
-  ipAddress String?
-  userAgent String?
-  createdAt DateTime @default(now())
 }
