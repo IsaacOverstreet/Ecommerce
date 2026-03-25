@@ -40,7 +40,7 @@ export default function AdminLoginPage() {
       sessionStorage.setItem("loginEmail", email);
 
       // Redirect to OTP verification
-      router.push("/admin/login/verify");
+      router.push("/admin/Login/verify");
     } catch (err) {
       const res = handleUiError(err);
       setError(res);
