@@ -76,6 +76,7 @@ export default function CategoryEditor({
       setOpenPopUp2(false);
       toast.success("Category successfully deleted");
     } catch (error) {
+      setOpenPopUp2(false);
       logger.error("Failed to delete", error);
       toast.error(getErrorMessage(error));
     }

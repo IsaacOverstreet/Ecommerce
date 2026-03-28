@@ -48,7 +48,7 @@ export async function DELETE(
   { params }: { params: { categoryId: string } }
 ) {
   try {
-    const { categoryId } = params;
+    const { categoryId } = await params;
     if (!categoryId) {
       return NextResponse.json(
         {
@@ -58,9 +58,27 @@ export async function DELETE(
       );
     }
 
+    //Check if category has been used
+    const usedCount = await prisma.productCategory.count({
+      where: {
+        categoryId: categoryId,
+      },
+    });
+    console.log("🚀 ~ usedCount:", usedCount);
+
+    if (usedCount > 0) {
+      return NextResponse.json(
+        {
+          message: "Cannot delete category: it is linked to products",
+        },
+        { status: 400 }
+      );
+    }
+    console.log("asdsfdgh");
     const deleteCategory = await prisma.category.delete({
       where: { id: categoryId },
     });
+    console.log("🚀 ~ deleteCategory:", deleteCategory);
     return NextResponse.json(deleteCategory);
   } catch (error) {
     logger.error("Failed to delete category", error);

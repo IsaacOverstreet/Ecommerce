@@ -37,14 +37,6 @@ export const POST = withErrorHandler(async (req: NextRequest) => {
     if (result.count === 0) {
       throw appError(401, "Invalid or expired OTP");
     }
-
-    // Clean up old OTPs
-    await tx.adminOTP.deleteMany({
-      where: {
-        adminId: admin.id,
-        OR: [{ expiresAt: { lt: new Date() } }, { used: true }],
-      },
-    });
   });
   return NextResponse.json({
     message: "OTP verified successfully",

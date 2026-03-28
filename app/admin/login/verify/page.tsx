@@ -33,7 +33,7 @@ export default function VerifyOTP() {
     try {
       // Verify OTP
       const res = await axios.post(
-        "/api/auth/verify-otp",
+        "/api/admin/auth/verify-otp",
         { email, otp },
         {
           headers: {
@@ -98,6 +98,7 @@ export default function VerifyOTP() {
               className="appearance-none rounded-md relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 focus:z-10 sm:text-sm text-center text-2xl tracking-widest"
               placeholder="000000"
             />
+            <p>Resend OTP</p>
           </div>
 
           <div>

@@ -1,7 +1,9 @@
 // app/admin/layout.tsx
 import { getServerSession } from "next-auth";
 import { redirect } from "next/navigation";
-import { authOptions } from "@/app/api/admin/auth/[...nextAuth]/route";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+
+import AdminSessionWrapper from "@/components/shared-component/sessionWrapper";
 
 export default async function AdminLayout({
   children,
@@ -15,5 +17,9 @@ export default async function AdminLayout({
     redirect("/admin/Login");
   }
 
-  return <>{children}</>;
+  return (
+    <>
+      <AdminSessionWrapper>{children}</AdminSessionWrapper>
+    </>
+  );
 }

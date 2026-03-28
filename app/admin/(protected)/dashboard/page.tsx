@@ -1,5 +1,5 @@
 import { getServerSession } from "next-auth";
-import { authOptions } from "@/app/api/admin/auth/[...nextAuth]/route";
+import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
 export default function Dashboard() {
   const session = getServerSession(authOptions);
