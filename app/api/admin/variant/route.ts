@@ -2,10 +2,16 @@ import { variantSchema } from "@/lib/validators/add-variant-schema";
 import { prisma } from "@/lib/prisma/client";
 import { logger } from "@/utils/logger";
 import { NewInputSchema } from "@/lib/sharedUtils/validators";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
+import { requireAdmin } from "@/utils/requireAdmin";
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
+  const session = await requireAdmin(request);
+
+  // If session returned a NextResponse, it means unauthorized
+  if (session instanceof NextResponse) return session;
+
   try {
     const body = await request.json();
     //////NEW LOGIC: Logic to add new variant value to existing variant type////////////////////////////
@@ -155,7 +161,11 @@ export async function POST(request: Request) {
   }
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const session = await requireAdmin(request);
+
+  // If session returned a NextResponse, it means unauthorized
+  if (session instanceof NextResponse) return session;
   try {
     const variants = await prisma.variantType.findMany({
       include: {

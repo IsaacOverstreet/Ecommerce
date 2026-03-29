@@ -2,11 +2,17 @@ import { editProductService } from "@/app/services/routeServices/editProductServ
 import { withErrorHandler } from "@/lib/errorHandlers/apiErrors";
 
 import { EditProductPayloadSchema } from "@/lib/validators/edit-product-schema";
+import { requireAdmin } from "@/utils/requireAdmin";
 
 import { NextRequest, NextResponse } from "next/server";
 import z from "zod";
 
 export const PUT = withErrorHandler(async (req: NextRequest) => {
+  const session = await requireAdmin(req);
+
+  // If session returned a NextResponse, it means unauthorized
+  if (session instanceof NextResponse) return session;
+
   const url = req.nextUrl;
   const segments = url.pathname.split("/");
   const productID = segments[segments.length - 1];

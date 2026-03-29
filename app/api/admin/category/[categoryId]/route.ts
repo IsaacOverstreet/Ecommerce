@@ -1,11 +1,17 @@
 import { prisma } from "@/lib/prisma/client";
 import { logger } from "@/utils/logger";
-import { NextResponse } from "next/server";
+import { requireAdmin } from "@/utils/requireAdmin";
+import { NextRequest, NextResponse } from "next/server";
 
 export async function PUT(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { categoryId: string } }
 ) {
+  const session = await requireAdmin(request);
+
+  // If session returned a NextResponse, it means unauthorized
+  if (session instanceof NextResponse) return session;
+
   try {
     const { categoryId } = params;
 
@@ -44,9 +50,14 @@ export async function PUT(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   { params }: { params: { categoryId: string } }
 ) {
+  const session = await requireAdmin(request);
+
+  // If session returned a NextResponse, it means unauthorized
+  if (session instanceof NextResponse) return session;
+
   try {
     const { categoryId } = await params;
     if (!categoryId) {

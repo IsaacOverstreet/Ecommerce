@@ -1,12 +1,18 @@
 import { prisma } from "@/lib/prisma/client";
 import { logger } from "@/utils/logger";
 import { TitleEditSchema } from "@/lib/sharedUtils/validators";
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
+import { requireAdmin } from "@/utils/requireAdmin";
 
 export async function PATCH(
-  request: Request,
+  request: NextRequest,
   context: { params: { variantTypeId: string } }
 ) {
+  const session = await requireAdmin(request);
+
+  // If session returned a NextResponse, it means unauthorized
+  if (session instanceof NextResponse) return session;
+
   try {
     const { variantTypeId } = await context.params;
 
@@ -43,9 +49,13 @@ export async function PATCH(
 }
 
 export async function DELETE(
-  request: Request,
+  request: NextRequest,
   context: { params: { variantTypeId: string } }
 ) {
+  const session = await requireAdmin(request);
+
+  // If session returned a NextResponse, it means unauthorized
+  if (session instanceof NextResponse) return session;
   try {
     const { variantTypeId } = await context.params;
 
