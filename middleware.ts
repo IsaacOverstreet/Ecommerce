@@ -1,29 +1,33 @@
 import { withAuth } from "next-auth/middleware";
+import { NextResponse } from "next/server";
 
-import { isAdmin, isCustomer } from "./lib/middleware/role";
+export default withAuth(
+  function middleware(req) {
+    const { pathname } = req.nextUrl;
+    const token = req.nextauth.token;
 
-export default withAuth({
-  callbacks: {
-    authorized: ({ token, req }) => {
-      const pathname = req.nextUrl.pathname;
-      // Public routes
-      if (pathname.startsWith("/auth")) return true;
-      //  Admin route
-      if (pathname.startsWith("/admin")) {
-        return isAdmin(token);
+    //  Don't block the login page
+    if (pathname === "/admin/Login") {
+      if (token) {
+        return NextResponse.redirect(new URL("/admin/dashboard", req.url));
       }
+      return NextResponse.next(); // let unauthenticated users through to login
+    }
 
-      // Customer routes
-      return isCustomer(token);
+    // Block all other /admin routes if not admin
+    if (!token || !token.isAdmin) {
+      return NextResponse.redirect(new URL("/admin/Login", req.url));
+    }
+
+    return NextResponse.next();
+  },
+  {
+    callbacks: {
+      authorized: () => true,
     },
   },
-
-  pages: {
-    signIn: "/auth/login",
-    error: "/auth/error",
-  },
-});
+);
 
 export const config = {
-  matcher: ["/account/:path*", "/checkout/:path*", "/cart/:path*"],
+  matcher: ["/admin/:path*"], // runs for all /admin routes only
 };

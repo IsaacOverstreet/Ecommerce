@@ -4,7 +4,7 @@ import { productQuerySchema } from "@/lib/validators/searchParams";
 import { buildProductOrderBy } from "@/utils/buildProductOrderBy";
 import { buildProductWhere } from "@/utils/buildProductWhere";
 import { normalizeProduct } from "@/utils/normalizeProduct";
-import { requireAdmin } from "@/utils/requireAdmin";
+
 import { NextRequest, NextResponse } from "next/server";
 
 export interface ProductFilters {
@@ -22,11 +22,6 @@ export interface ProductFilters {
 }
 
 export const GET = withErrorHandler(async (req: NextRequest) => {
-  const session = await requireAdmin(req);
-
-  // If session returned a NextResponse, it means unauthorized
-  if (session instanceof NextResponse) return session;
-
   const { searchParams } = new URL(req.url);
   const lim = Number(searchParams.get("page"));
   console.log("page", lim);

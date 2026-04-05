@@ -1,17 +1,12 @@
 import { prisma } from "@/lib/prisma/client";
 import { logger } from "@/utils/logger";
-import { requireAdmin } from "@/utils/requireAdmin";
+
 import { NextRequest, NextResponse } from "next/server";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { categoryId: string } }
+  { params }: { params: { categoryId: string } },
 ) {
-  const session = await requireAdmin(request);
-
-  // If session returned a NextResponse, it means unauthorized
-  if (session instanceof NextResponse) return session;
-
   try {
     const { categoryId } = params;
 
@@ -20,7 +15,7 @@ export async function PUT(
         {
           message: "Id is needed",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const { name, slug } = await request.json();
@@ -31,7 +26,7 @@ export async function PUT(
     if (existingCategory) {
       return NextResponse.json(
         { message: "Another category with this name already exists" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const category = await prisma.category.update({
@@ -44,20 +39,15 @@ export async function PUT(
 
     return NextResponse.json(
       { error: "Failed to create category" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { categoryId: string } }
+  { params }: { params: { categoryId: string } },
 ) {
-  const session = await requireAdmin(request);
-
-  // If session returned a NextResponse, it means unauthorized
-  if (session instanceof NextResponse) return session;
-
   try {
     const { categoryId } = await params;
     if (!categoryId) {
@@ -65,7 +55,7 @@ export async function DELETE(
         {
           message: "Id is needed",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
@@ -82,7 +72,7 @@ export async function DELETE(
         {
           message: "Cannot delete category: it is linked to products",
         },
-        { status: 400 }
+        { status: 400 },
       );
     }
     console.log("asdsfdgh");
@@ -95,7 +85,7 @@ export async function DELETE(
     logger.error("Failed to delete category", error);
     return NextResponse.json(
       { message: "Failed to delete category" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -2,24 +2,18 @@ import { prisma } from "@/lib/prisma/client";
 import { NextRequest, NextResponse } from "next/server";
 import { EditingValueSchema } from "@/lib/sharedUtils/validators";
 import { logger } from "@/utils/logger";
-import { requireAdmin } from "@/utils/requireAdmin";
 
 export async function PATCH(
   request: NextRequest,
-  context: { params: { variantId: string } }
+  context: { params: { variantId: string } },
 ) {
-  const session = await requireAdmin(request);
-
-  // If session returned a NextResponse, it means unauthorized
-  if (session instanceof NextResponse) return session;
-
   try {
     const { variantId } = context.params;
 
     if (!variantId) {
       return NextResponse.json(
         { message: "failed to get Id" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const body = await request.json();
@@ -38,7 +32,7 @@ export async function PATCH(
     if (!existingVariantId) {
       return NextResponse.json(
         { message: "id does not exist" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
@@ -55,7 +49,7 @@ export async function PATCH(
     if (existingVariantValue) {
       return NextResponse.json(
         { message: "New value already exist" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -70,27 +64,22 @@ export async function PATCH(
 
     return NextResponse.json(
       { error: "Internal server error" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { variantId: string } }
+  context: { params: { variantId: string } },
 ) {
-  const session = await requireAdmin(request);
-
-  // If session returned a NextResponse, it means unauthorized
-  if (session instanceof NextResponse) return session;
-
   try {
     const { variantId } = await context.params;
 
     if (!variantId) {
       return NextResponse.json(
         { message: "failed to get Id" },
-        { status: 400 }
+        { status: 400 },
       );
     }
     const body = await request.json();
@@ -113,7 +102,7 @@ export async function DELETE(
 
     return NextResponse.json(
       { error: "Something went wrong" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

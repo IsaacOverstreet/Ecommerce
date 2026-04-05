@@ -25,12 +25,14 @@ import z from "zod";
 export async function getProducts(payload: ProductFilters) {
   try {
     const validate = productQuerySchema.parse(payload);
+    console.log("here");
 
     const res = await axios.get<ProductResponse>(
       `${process.env.NEXT_PUBLIC_APP_URL}/api/admin/view-Products`,
-      { params: validate }
+      { params: validate },
     );
     console.log("🚀 ~ getProducts ~ res:", res.data);
+
     if (!res.data) {
       throw new Error("Failed to fetch Products");
     }
@@ -55,7 +57,7 @@ export async function getProducts(payload: ProductFilters) {
 export async function getCategories() {
   try {
     const res = await axios.get(
-      `${process.env.NEXT_PUBLIC_APP_URL}/api/admin/category`
+      `${process.env.NEXT_PUBLIC_APP_URL}/api/admin/category`,
     );
 
     if (!res.data) {

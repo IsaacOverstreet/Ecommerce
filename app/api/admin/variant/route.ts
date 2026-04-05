@@ -4,14 +4,8 @@ import { logger } from "@/utils/logger";
 import { NewInputSchema } from "@/lib/sharedUtils/validators";
 import { NextRequest, NextResponse } from "next/server";
 import { ZodError } from "zod";
-import { requireAdmin } from "@/utils/requireAdmin";
 
 export async function POST(request: NextRequest) {
-  const session = await requireAdmin(request);
-
-  // If session returned a NextResponse, it means unauthorized
-  if (session instanceof NextResponse) return session;
-
   try {
     const body = await request.json();
     //////NEW LOGIC: Logic to add new variant value to existing variant type////////////////////////////
@@ -28,7 +22,7 @@ export async function POST(request: NextRequest) {
       if (!variantTypeExists) {
         return NextResponse.json(
           { message: "VariantType not found" },
-          { status: 404 }
+          { status: 404 },
         );
       }
 
@@ -42,7 +36,7 @@ export async function POST(request: NextRequest) {
       if (duplicate) {
         return NextResponse.json(
           { message: "Variant value already exists" },
-          { status: 409 }
+          { status: 409 },
         );
       }
       // Create the new VariantValue
@@ -65,14 +59,14 @@ export async function POST(request: NextRequest) {
       if (isColor) {
         return NextResponse.json(
           { error: "Expected color variants as array, not single object" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
       if (!values || values.length === 0) {
         return NextResponse.json(
           { error: "No values provided for value variant" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -87,7 +81,7 @@ export async function POST(request: NextRequest) {
           {
             message: "Variant type exist",
           },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -111,7 +105,7 @@ export async function POST(request: NextRequest) {
       if (!allColor) {
         return NextResponse.json(
           { error: "All items in array must be color variants" },
-          { status: 400 }
+          { status: 400 },
         );
       }
       ///////////////////////////since all the object in the array has the same name and description, then i can pick the first name and description to represent all.///////////////////////////////////////////
@@ -122,7 +116,7 @@ export async function POST(request: NextRequest) {
       if (invalid) {
         return NextResponse.json(
           { error: "Each color variant must include colorName and hexCode" },
-          { status: 400 }
+          { status: 400 },
         );
       }
 
@@ -147,7 +141,7 @@ export async function POST(request: NextRequest) {
           message: "validation error",
           errors: error.errors,
         },
-        { status: 400 }
+        { status: 400 },
       );
     } else {
       return NextResponse.json(
@@ -155,17 +149,13 @@ export async function POST(request: NextRequest) {
           success: false,
           message: "internal server error",
         },
-        { status: 500 }
+        { status: 500 },
       );
     }
   }
 }
 
-export async function GET(request: NextRequest) {
-  const session = await requireAdmin(request);
-
-  // If session returned a NextResponse, it means unauthorized
-  if (session instanceof NextResponse) return session;
+export async function GET() {
   try {
     const variants = await prisma.variantType.findMany({
       include: {
@@ -181,7 +171,7 @@ export async function GET(request: NextRequest) {
     logger.error("failed to fetch variant", error);
     return NextResponse.json(
       { message: "failed to fetch variant" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

@@ -2,17 +2,11 @@ import { prisma } from "@/lib/prisma/client";
 import { logger } from "@/utils/logger";
 import { TitleEditSchema } from "@/lib/sharedUtils/validators";
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/utils/requireAdmin";
 
 export async function PATCH(
   request: NextRequest,
-  context: { params: { variantTypeId: string } }
+  context: { params: { variantTypeId: string } },
 ) {
-  const session = await requireAdmin(request);
-
-  // If session returned a NextResponse, it means unauthorized
-  if (session instanceof NextResponse) return session;
-
   try {
     const { variantTypeId } = await context.params;
 
@@ -30,7 +24,7 @@ export async function PATCH(
     if (existingType) {
       return NextResponse.json(
         { message: "Variant type name already exists" },
-        { status: 409 }
+        { status: 409 },
       );
     }
 
@@ -43,19 +37,15 @@ export async function PATCH(
     logger.error(error);
     return NextResponse.json(
       { message: "something went wrong" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
 
 export async function DELETE(
   request: NextRequest,
-  context: { params: { variantTypeId: string } }
+  context: { params: { variantTypeId: string } },
 ) {
-  const session = await requireAdmin(request);
-
-  // If session returned a NextResponse, it means unauthorized
-  if (session instanceof NextResponse) return session;
   try {
     const { variantTypeId } = await context.params;
 
@@ -71,27 +61,27 @@ export async function DELETE(
     if (!existingVariantType) {
       return NextResponse.json(
         { message: "item does not exist" },
-        { status: 404 }
+        { status: 404 },
       );
     }
 
     if (existingVariantType.values.length > 0) {
       return NextResponse.json(
         { message: "Cannot delete variant type. Remove all values first." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     await prisma.variantType.delete({ where: { id: variantTypeId } });
     return NextResponse.json(
       { message: "Variant type successfully deleted" },
-      { status: 200 }
+      { status: 200 },
     );
   } catch (error) {
     logger.error("Delete Variant Type Error:", error);
     return NextResponse.json(
       { message: "Something went wrong" },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }
