@@ -1,25 +1,21 @@
 // app/admin/layout.tsx
-import { getServerSession } from "next-auth";
-import { redirect } from "next/navigation";
-import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+"use client";
+import { SessionProvider } from "next-auth/react";
+import { useActivityTracker } from "@/hooks/useActivityTracker";
 
-import AdminSessionWrapper from "@/components/shared-component/sessionWrapper";
+function AdminContent({ children }: { children: React.ReactNode }) {
+  useActivityTracker();
+  return <div>{children}</div>;
+}
 
-export default async function AdminLayout({
+export default function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const session = await getServerSession(authOptions);
-
-  // Protect all admin routes
-  if (!session) {
-    redirect("/admin/Login");
-  }
-
   return (
-    <>
-      <AdminSessionWrapper>{children}</AdminSessionWrapper>
-    </>
+    <SessionProvider>
+      <AdminContent>{children}</AdminContent>
+    </SessionProvider>
   );
 }

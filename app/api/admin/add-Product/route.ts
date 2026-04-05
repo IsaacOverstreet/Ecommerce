@@ -2,20 +2,14 @@ import { createProductService } from "@/app/services/routeServices/createProduct
 import { withErrorHandler } from "@/lib/errorHandlers/apiErrors";
 
 import { createProductPayloadSchema } from "@/lib/validators/add-product-schema";
-import { requireAdmin } from "@/utils/requireAdmin";
 
 import { NextRequest, NextResponse } from "next/server";
 
 export const POST = withErrorHandler(async (req: NextRequest) => {
-  const session = await requireAdmin(req);
-
-  // If session returned a NextResponse, it means unauthorized
-  if (session instanceof NextResponse) return session;
-
   const formData = await req.formData();
   const productData = JSON.parse(formData.get("productData") as string);
   const selectedCategories = JSON.parse(
-    formData.get("selectedCategories") as string
+    formData.get("selectedCategories") as string,
   );
   const productVariants = JSON.parse(formData.get("productVariants") as string);
   const files = formData.getAll("images") as File[];
