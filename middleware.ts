@@ -1,17 +1,19 @@
 import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 
+const publicAdminRoutes = ["/admin/Login", "/admin/Login/verify"];
+
 export default withAuth(
   function middleware(req) {
     const { pathname } = req.nextUrl;
     const token = req.nextauth.token;
 
     //  Don't block the login page
-    if (pathname === "/admin/Login") {
+    if (publicAdminRoutes.includes(pathname)) {
       if (token) {
         return NextResponse.redirect(new URL("/admin/dashboard", req.url));
       }
-      return NextResponse.next(); // let unauthenticated users through to login
+      return NextResponse.next();
     }
 
     // Block all other /admin routes if not admin

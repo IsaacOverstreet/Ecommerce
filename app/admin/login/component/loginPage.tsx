@@ -21,15 +21,15 @@ export default function AdminLoginPage() {
     setLoading(true);
 
     try {
-      // First, send OTP
+      // send OTP
       const res = await axios.post(
         "/api/admin/auth/send-otp",
-        { email, password }, // this is the body
+        { email, password },
         {
           headers: {
             "Content-Type": "application/json",
           },
-        }
+        },
       );
 
       if (!res.data) {
@@ -49,20 +49,6 @@ export default function AdminLoginPage() {
       setLoading(false);
     }
   };
-
-  // const res = await signIn("credentials", {
-  //   email,
-  //   password,
-  //   redirect: false,
-  // });
-
-  // setLoading(false);
-
-  // if (res?.ok) {
-  //   router.push("/admin/dashboard");
-  // } else {
-  //   alert("Invalid login credentials");
-  // }
 
   return (
     <div className="flex min-h-screen bg-gray-100">
